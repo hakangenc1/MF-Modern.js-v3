@@ -32,6 +32,7 @@ export default defineConfig({
   },
   html: {
     title: "Northwind Bank",
+    favicon: "./config/public/favicon.svg",
     // <html lang> is set at runtime by a Helmet tag in the root layout (this
     // Modern.js version's html config has no `lang` key).
     // Replace Modern.js's default mobile viewport (it sets user-scalable=no).
@@ -40,8 +41,23 @@ export default defineConfig({
       "color-scheme": "light dark",
       "theme-color": "#0b0b0f",
       description:
-        "Northwind Bank — accounts, transfers, payees, cards and two-factor security in one dashboard.",
+        "Northwind Bank — accounts, transfers, payees, cards, budgets and two-factor security in one server-rendered dashboard.",
     },
+    tags: [
+      { tag: "link", attrs: { rel: "manifest", href: "/manifest.webmanifest" } },
+      { tag: "meta", attrs: { property: "og:type", content: "website" } },
+      { tag: "meta", attrs: { property: "og:site_name", content: "Northwind Bank" } },
+      { tag: "meta", attrs: { property: "og:title", content: "Northwind Bank" } },
+      {
+        tag: "meta",
+        attrs: {
+          property: "og:description",
+          content:
+            "Accounts, transfers, payees, cards, budgets and two-factor security in one server-rendered dashboard.",
+        },
+      },
+      { tag: "meta", attrs: { name: "twitter:card", content: "summary" } },
+    ],
   },
   plugins: [appTools(), moduleFederationPlugin()],
 });

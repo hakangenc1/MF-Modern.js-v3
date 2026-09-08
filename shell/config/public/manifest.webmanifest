@@ -1,0 +1,12 @@
+{
+  "name": "Northwind Bank",
+  "short_name": "Northwind",
+  "description": "Accounts, transfers, payees, cards, budgets and two-factor security in one dashboard.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0b0b0f",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

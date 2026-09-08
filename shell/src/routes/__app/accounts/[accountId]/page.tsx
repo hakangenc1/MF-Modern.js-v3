@@ -75,7 +75,10 @@ export default function AccountDetailPage() {
             </Suspense>
           </AccountDetailView>
 
-          <Sheet open={!!txnId} onOpenChange={(o) => !o && closeSheet()}>
+          {/* Only mount the Sheet (+ its Suspense) when a txn is selected, so a
+              fresh SSR render and hydration see the same tree. */}
+          {txnId ? (
+          <Sheet open onOpenChange={(o) => !o && closeSheet()}>
             <SheetContent className="overflow-y-auto sm:max-w-md">
               <SheetHeader className="mb-4">
                 <SheetTitle>Transaction</SheetTitle>
@@ -110,6 +113,7 @@ export default function AccountDetailPage() {
               </Suspense>
             </SheetContent>
           </Sheet>
+          ) : null}
         </>
       ) : (
         <p className="text-sm text-muted-foreground">Account not found.</p>

@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /$
+Disallow: /accounts
+Disallow: /payments
+Disallow: /cards
+Disallow: /budgets
+Disallow: /statements
+Disallow: /notifications
+Disallow: /settings
+Disallow: /security
+Disallow: /insights

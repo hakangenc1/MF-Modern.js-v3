@@ -169,8 +169,8 @@ The remote returns data and markup — never a hook, a route, or a `<Link>`.
 
 | Remote | Exposes | Consumed by |
 |---|---|---|
-| **accounts** `:3001` | `./data` — loadAccountsList, loadAccountDetail, loadDashboardWidgets<br>`./AccountsView` · `./AccountDetailView`<br>`./widgets` — CashflowCard, SpendingCard, RecentActivityCard | shell: `/` (dashboard)<br>`/accounts`, `/accounts/:id`<br>`/insights` (client-side) |
-| **payments** `:3002` | `./data` — loadTransferContext, loadPayees, loadTransfers, submitTransfer<br>`./TransferView` · `./PayeesView` · `./ActivityView`<br>`./QuickTransferCard` | shell: `/` (quick transfer)<br>`/payments`, `/payments/payees`, `/payments/activity` |
+| **accounts** `:3001` | `./data` — loadAccountsList, loadAccountDetail, loadDashboardWidgets, loadTransaction/updateTransaction*, loadStatements, loadBudgetProgress/saveBudget, loadSavingsGoals/contributeGoal, setNickname<br>`./AccountsView` · `./AccountDetailView` · `./TransactionDetail` · `./BudgetsView` · `./StatementsView`<br>`./widgets` — Cashflow/Spending/RecentActivity/BudgetSummary/SavingsGoal cards | shell: `/` (dashboard)<br>`/accounts`, `/accounts/:id` (+ `?txn=` sheet, `?sort=`)<br>`/budgets`, `/statements`, `/insights` (client-side) |
+| **payments** `:3002` | `./data` — loadTransferContext, loadPayees, loadTransfers (+recurring), submitTransfer, submitInternalTransfer, cancelScheduledTransfer, toggleRecurring, add/edit/removePayee<br>`./TransferView` (payee + own-account) · `./PayeesView` (CRUD) · `./ActivityView` (scheduled/recurring)<br>`./QuickTransferCard` | shell: `/` (quick transfer)<br>`/payments`, `/payments/payees`, `/payments/activity` |
 | **security** `:3003` | `./data` — loadSecurityOverview, loadDevices, loadSessions, setTwoFactorEnabled<br>`./SecurityView` · `./TwoFactorView` · `./DevicesView` · `./SessionsView`<br>`./SecurityStatusCard` | shell: `/` (status card)<br>`/security`, `/security/two-factor`<br>`/security/devices`, `/security/sessions` |
 | **twofactor** `:3004` | `./data` — verifyCode<br>`./TwoFactorChallenge` (inline OTP form)<br>`./TwoFactorDialog` (self-verifying popup)<br>`./TwoFactorGate` (wrap a button so it must pass 2FA) | **shell** `/login/verify`<br>**payments** transfer dialog<br>**security** `/security/two-factor` |
 
@@ -238,6 +238,9 @@ and the document head is kept clear of anything render-blocking from a third par
 | Lean prod bundle | `console.*` stripped; no client source maps shipped (~4.7 MB of `.map` not deployed). | `performance.removeConsole` + `output.sourceMap: false` |
 | Scoped preload | Only the font is preloaded — not every route chunk / font subset. | `performance.preload: { type: "all-chunks", include: [/\.woff2$/] }` |
 | Code splitting | One JS chunk per route; shared vendor chunks; the charts library loads only where a chart renders. | Rspack defaults |
+| No recharts on list routes | `BalanceSparkline` is hand-authored inline SVG, so `/accounts`, `/accounts/:id` and the dashboard account cards never pull the recharts chunk — it's only on `/` (cash-flow / spending), `/budgets` and `/insights`. | `components/patterns/charts.tsx` |
+| Warm federation connections | The app layout emits `<link rel="preconnect">` for each remote origin so the client-side manifest / entry fetch skips a fresh TLS handshake mid-navigation. | `__app/layout.tsx` + `lib/remote-origins.ts` |
+| Off-screen work skipped | Below-the-fold dashboard sections use `content-visibility: auto` with a reserved intrinsic size (no CLS). | `.cv-auto` in `styles.css` |
 | Immutable static assets | Hashed filenames under `/static/` — cache one year, serve from a CDN. | `Cache-Control: immutable` |
 | No `user-scalable=no` | Default mobile viewport replaced so pinch-zoom works (accessibility). | `html.meta.viewport` |
 | Build cache | Faster rebuilds. | `performance.buildCache` |
@@ -263,7 +266,18 @@ the dashboard's own JS is ≈ 80 KB gzip before shared vendor chunks.
 - **CLS** — `font-display: swap` with a close-metric system fallback; streamed regions
   occupy reserved skeleton space, so the skeleton → content swap does not reflow the page.
 - **INP** — React 18 concurrent renderer; interactive-only widgets (menus, the transfer
-  form) mount after hydration so they never block it.
+  form) mount after hydration so they never block it. In-page filtering (category chips,
+  sort headers, search) is a query-only `navigate()` — the control spins on itself and the
+  results dim; the full-page blur transition is reserved for real page-to-page moves
+  (`components/nav-progress.tsx` + `patterns/pending.tsx`).
+
+### Design tokens
+
+Stock shadcn/ui **black-and-white** palette (neutral base, oklch). The only chromatic
+tokens are `--destructive`, the money ink (`--pos` / `--neg`) and badge status colors;
+`--chart-1..5` is a greyscale ramp. Because a federated view is styled by the **host's**
+Tailwind build, `shell/src/styles.css` `@source`s the sibling remotes' `src` so every
+utility class a federated component uses actually ships.
 
 > **Measure against a real deployment.** Numbers above are build output. Run Lighthouse or a
 > field tool against a deployed instance for LCP / CLS / INP — the dev server (unminified,

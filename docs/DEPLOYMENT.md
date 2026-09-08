@@ -569,10 +569,29 @@ per-request, so it recovers on the next load.
 | Remote isolation | Stop the `payments` service, reload `/` | dashboard still renders; only the quick-transfer card degrades |
 | Session shared | Sign in on shell, hit `/security` | no re-login (same `SESSION_SECRET`) |
 
+**Free-tier: keep the services warm.** SSR federation needs every remote reachable when the
+shell renders. On a free plan a service spins down after ~15 min idle and answers with an
+HTML "waking up" page instead of its manifest JSON — so the **first** request after idle is
+slow (the shell retries the manifest for ~40 s while the remote boots — see
+`shell/src/mf-runtime-plugin.ts`) and, if a remote is still cold after that, the shell shows
+a "warming up, retrying" page (`shell/src/routes/error.tsx`) instead of a bare 500. Fix it
+by keeping the set warm:
+
+- Create a **free Render Cron Job** from this repo, schedule `*/10 * * * *`, command
+  `node scripts/keep-warm.mjs` (it pings the shell + every remote manifest). Or point any
+  external uptime pinger at the same URLs.
+
+**Editing mock data.** `shell/src/mock/{types,seed,index,format}.ts` is the source of truth;
+run `node scripts/sync-mock.mjs` after any edit to copy it to `accounts` / `payments` /
+`security` (`--check` fails CI on drift).
+
 Triage:
 
 - `blocked by CORS policy` / `RUNTIME-003` in the console, SSR HTML fine but SPA dead →
   `MODERN_MF_AUTO_CORS` isn't set on that remote.
+- Whole shell 500s with `RUNTIME-003` / `Unexpected token '<'` referencing a remote's
+  `mf-manifest.json`, and it doesn't self-heal → a remote is cold (free tier). Redeploy the
+  shell to clear its process, then run `scripts/keep-warm.mjs` on a cron.
 - 2FA step never loads / transfer "Confirm & send" throws → `TWOFACTOR_ORIGIN` missing on
   the **shell** (login) or **payments** (transfer).
 - Federation chunks **404** → the remote's `*_ORIGIN` is wrong or has a trailing slash.
