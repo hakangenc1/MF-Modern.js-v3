@@ -12,8 +12,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { User } from "@/mock";
+import { useCan } from "@/lib/entitlements";
 
 export function UserMenu({ user }: { user: User }) {
+  const canDevices = useCan("security.advanced");
   // Radix menus/popovers/tooltips generate `useId` values whose numbering is
   // sensitive to Modern.js' streamed SSR boundary layout, which produces
   // "Prop `id`/`aria-controls` did not match" on hydration. The header's
@@ -39,7 +41,9 @@ export function UserMenu({ user }: { user: User }) {
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="flex flex-col">
           <span>{user.name}</span>
-          <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
+          <span className="text-xs font-normal text-muted-foreground">
+            {user.email} · {user.plan}
+          </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
@@ -52,11 +56,13 @@ export function UserMenu({ user }: { user: User }) {
             <CreditCard className="size-4" /> Cards
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/security/devices">
-            <UserRound className="size-4" /> Trusted devices
-          </Link>
-        </DropdownMenuItem>
+        {canDevices ? (
+          <DropdownMenuItem asChild>
+            <Link to="/security/devices">
+              <UserRound className="size-4" /> Trusted devices
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
           <Link to="/logout">

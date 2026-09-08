@@ -3,15 +3,39 @@ import {
   type LoaderFunctionArgs,
   type ActionFunctionArgs,
 } from "@modern-js/runtime/router";
+import { PERSONAS } from "@/mock";
 import { getSession, pendingCookie, safeRedirect } from "@/mock/session";
 
-export type LoginData = { redirectTo: string };
+export type PersonaCard = {
+  id: string;
+  label: string;
+  name: string;
+  plan: string;
+  tagline: string;
+  can: string[];
+  cannot: string[];
+};
+
+export type LoginData = { redirectTo: string; personas: PersonaCard[] };
 export type LoginActionData = { error?: string; next?: string };
+
+const toCard = (p: (typeof PERSONAS)[number]): PersonaCard => ({
+  id: p.id,
+  label: p.label,
+  name: p.user.name,
+  plan: p.user.plan,
+  tagline: p.tagline,
+  can: p.can,
+  cannot: p.cannot,
+});
 
 export const loader = async ({ request }: LoaderFunctionArgs): Promise<LoginData | Response> => {
   if (getSession(request)) return redirect("/");
   const url = new URL(request.url);
-  return { redirectTo: safeRedirect(url.searchParams.get("redirectTo")) };
+  return {
+    redirectTo: safeRedirect(url.searchParams.get("redirectTo")),
+    personas: PERSONAS.map(toCard),
+  };
 };
 
 /**
@@ -22,12 +46,12 @@ export const loader = async ({ request }: LoaderFunctionArgs): Promise<LoginData
  */
 export const action = async ({ request }: ActionFunctionArgs) => {
   const form = await request.formData();
-  const email = String(form.get("email") ?? "").trim();
-  const password = String(form.get("password") ?? "");
+  const personaId = String(form.get("persona") ?? "");
   const redirectTo = safeRedirect(String(form.get("redirectTo") ?? ""));
 
-  if (!email || !password) {
-    return { error: "Enter your email and password to continue." } satisfies LoginActionData;
+  const persona = PERSONAS.find((p) => p.id === personaId);
+  if (!persona) {
+    return { error: "Choose a profile to continue." } satisfies LoginActionData;
   }
 
   const next = `/login/verify?${new URLSearchParams({ redirectTo })}`;
@@ -35,7 +59,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     status: 200,
     headers: {
       "Content-Type": "application/json",
-      "Set-Cookie": pendingCookie(email),
+      "Set-Cookie": pendingCookie(persona.user.email, persona.id),
     },
   });
 };

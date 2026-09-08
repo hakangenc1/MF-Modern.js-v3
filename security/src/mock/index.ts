@@ -46,7 +46,7 @@ import type {
 export * from "./types";
 export { delay, LATENCY } from "./delay";
 export * from "./format";
-export { NOW, DEMO_2FA_CODE } from "./seed";
+export { NOW, DEMO_2FA_CODE, PERSONAS, USER, USER_PERSONAL } from "./seed";
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 

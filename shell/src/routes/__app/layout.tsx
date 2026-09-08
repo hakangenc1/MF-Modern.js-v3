@@ -21,8 +21,10 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/user-menu";
 import { NotificationBell } from "@/components/notification-bell";
 import { RenderStamp } from "@/components/patterns/render-stamp";
+import { EntitlementsMenu } from "@/components/entitlements-menu";
 import { NavProgress, NavTransition } from "@/components/nav-progress";
 import { useSpaNavigation } from "@/components/spa-nav";
+import { EntitlementsProvider } from "@/lib/entitlements";
 import type { AppLayoutData } from "./layout.data";
 
 const LABELS: Record<string, string> = {
@@ -43,13 +45,15 @@ const LABELS: Record<string, string> = {
 };
 
 export default function AppLayout() {
-  const { user, remoteOrigins, notifications, unreadCount } = useLoaderData() as AppLayoutData;
+  const { user, persona, entitlements, remoteOrigins, notifications, unreadCount } =
+    useLoaderData() as AppLayoutData;
   const { pathname } = useLocation();
   const segments = pathname.split("/").filter(Boolean);
   // Upgrade federated <a href> / GET <form> to client-side navigation.
   useSpaNavigation();
 
   return (
+    <EntitlementsProvider value={entitlements}>
     <SidebarProvider>
       <Helmet>
         {remoteOrigins.map((o) => (
@@ -93,6 +97,11 @@ export default function AppLayout() {
 
           <div className="ml-auto flex items-center gap-1.5">
             <RenderStamp />
+            <EntitlementsMenu
+              current={entitlements}
+              personaLabel={persona.label}
+              personaDefaults={persona.defaults}
+            />
             <div className="hidden sm:block">
               <CommandMenu />
             </div>
@@ -110,5 +119,6 @@ export default function AppLayout() {
         </main>
       </SidebarInset>
     </SidebarProvider>
+    </EntitlementsProvider>
   );
 }

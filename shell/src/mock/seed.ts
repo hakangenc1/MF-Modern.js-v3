@@ -1,11 +1,14 @@
+import { ALL_ENTITLEMENTS } from "./types";
 import type {
   Account,
   Budget,
   CashflowPoint,
   Card,
   Device,
+  Entitlement,
   NotificationItem,
   Payee,
+  Persona,
   Profile,
   RecurringRule,
   SavingsGoal,
@@ -46,6 +49,56 @@ export const USER: User = {
   memberSince: "2016-03-11",
   plan: "Premier",
 };
+
+export const USER_PERSONAL: User = {
+  id: "usr_sam",
+  name: "Sam Okafor",
+  firstName: "Sam",
+  email: "sam.okafor@example.com",
+  initials: "SO",
+  memberSince: "2022-09-04",
+  plan: "Personal",
+};
+
+/**
+ * The two entitlement personas offered on the sign-in page. Both drive the same
+ * underlying accounts / transactions / payees — only the identity and the
+ * entitlement set differ, so the contrast is purely "what the views show".
+ */
+export const PERSONAS: Persona[] = [
+  {
+    id: "premier",
+    label: "Premier",
+    user: USER,
+    tagline: "Full-service relationship — wealth, budgeting and analytics.",
+    can: [
+      "Budgets, savings goals & Insights",
+      "Virtual cards & recurring / internal transfers",
+      "Device & session management",
+      "Investment account and net-worth breakdown",
+    ],
+    cannot: [],
+    entitlements: ALL_ENTITLEMENTS,
+  },
+  {
+    id: "personal",
+    label: "Personal",
+    user: USER_PERSONAL,
+    tagline: "Everyday banking — accounts, payments and cards.",
+    can: [
+      "Accounts, payments to payees, cards",
+      "Statements (view only)",
+      "Security overview & profile settings",
+    ],
+    cannot: [
+      "No Budgets, savings goals or Insights",
+      "No virtual cards or recurring / internal transfers",
+      "No device / session management or statement export",
+      "No investment account",
+    ],
+    entitlements: [] as Entitlement[],
+  },
+];
 
 interface AccountSeed {
   id: string;

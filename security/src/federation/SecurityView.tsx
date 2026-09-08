@@ -9,10 +9,13 @@ export default function SecurityView({
   overview,
   devices,
   sessions,
+  allowAdvanced = true,
 }: {
   overview: SecurityOverview;
   devices: Device[];
   sessions: SessionEntry[];
+  /** `security.advanced` entitlement — the shell passes this; standalone = true. */
+  allowAdvanced?: boolean;
 }) {
   const band =
     overview.score >= 80
@@ -115,32 +118,34 @@ export default function SecurityView({
         </ul>
       </SectionCard>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <SummaryList
-          title="Trusted devices"
-          href="/security/devices"
-          items={devices.slice(0, 3).map((d) => ({
-            id: d.id,
-            icon: d.kind === "phone" ? Smartphone : Laptop,
-            primary: d.name,
-            secondary: `${d.location} · ${relativeTime(d.lastActive)}`,
-            tag: d.current ? "This device" : d.trusted ? "Trusted" : "Unverified",
-          }))}
-          total={devices.length}
-        />
-        <SummaryList
-          title="Active sessions"
-          href="/security/sessions"
-          items={sessions.slice(0, 3).map((s) => ({
-            id: s.id,
-            icon: Laptop,
-            primary: s.browser,
-            secondary: `${s.location} · since ${formatDate(s.startedAt, "short")}`,
-            tag: s.current ? "Current" : "Active",
-          }))}
-          total={sessions.length}
-        />
-      </div>
+      {allowAdvanced ? (
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <SummaryList
+            title="Trusted devices"
+            href="/security/devices"
+            items={devices.slice(0, 3).map((d) => ({
+              id: d.id,
+              icon: d.kind === "phone" ? Smartphone : Laptop,
+              primary: d.name,
+              secondary: `${d.location} · ${relativeTime(d.lastActive)}`,
+              tag: d.current ? "This device" : d.trusted ? "Trusted" : "Unverified",
+            }))}
+            total={devices.length}
+          />
+          <SummaryList
+            title="Active sessions"
+            href="/security/sessions"
+            items={sessions.slice(0, 3).map((s) => ({
+              id: s.id,
+              icon: Laptop,
+              primary: s.browser,
+              secondary: `${s.location} · since ${formatDate(s.startedAt, "short")}`,
+              tag: s.current ? "Current" : "Active",
+            }))}
+            total={sessions.length}
+          />
+        </div>
+      ) : null}
     </>
   );
 }

@@ -41,12 +41,15 @@ export default function TransferView({
   context,
   onSubmit,
   pending = false,
+  allowInternal = true,
   result,
   error,
 }: {
   context: TransferContext;
   onSubmit: (values: TransferValues) => void;
   pending?: boolean;
+  /** `payments.advanced` entitlement — the shell passes this; standalone = true. */
+  allowInternal?: boolean;
   result?: { ok: boolean; transfer?: Transfer } | null;
   error?: string | null;
 }) {
@@ -65,7 +68,7 @@ export default function TransferView({
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
 
-  const internal = values.mode === "internal";
+  const internal = allowInternal && values.mode === "internal";
   const from = accounts.find((a) => a.id === values.fromAccountId);
   const payee = payees.find((p) => p.id === values.toPayeeId);
   const toAccount = accounts.find((a) => a.id === values.toAccountId);
@@ -122,15 +125,17 @@ export default function TransferView({
             </Alert>
           ) : null}
 
-          <Tabs
-            value={values.mode}
-            onValueChange={(v) => set({ mode: v as TransferValues["mode"] })}
-          >
-            <TabsList>
-              <TabsTrigger value="payee">To a payee</TabsTrigger>
-              <TabsTrigger value="internal">Between my accounts</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {allowInternal ? (
+            <Tabs
+              value={values.mode}
+              onValueChange={(v) => set({ mode: v as TransferValues["mode"] })}
+            >
+              <TabsList>
+                <TabsTrigger value="payee">To a payee</TabsTrigger>
+                <TabsTrigger value="internal">Between my accounts</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          ) : null}
 
           <div className="grid gap-2">
             <Label htmlFor="fromAccountId">From account</Label>

@@ -14,7 +14,7 @@ import { TwoFactorChallenge } from "twofactor/TwoFactorChallenge";
 import type { VerifyData, VerifyActionData } from "./page.data";
 
 export default function VerifyRoute() {
-  const { email } = useLoaderData() as VerifyData;
+  const { email, personaLabel } = useLoaderData() as VerifyData;
   const actionData = useActionData() as VerifyActionData | undefined;
   const submit = useSubmit();
   const navigate = useNavigate();
@@ -27,7 +27,11 @@ export default function VerifyRoute() {
   return (
     <AuthShell
       title="Verify it’s you"
-      description="Two-factor authentication keeps your account protected."
+      description={
+        personaLabel
+          ? `Signing in to the ${personaLabel} profile. Two-factor keeps your account protected.`
+          : "Two-factor authentication keeps your account protected."
+      }
       footer={
         <>
           Lost your device?{" "}

@@ -38,16 +38,23 @@ function downloadStatementCsv(account: Account, s: Statement) {
 export default function StatementsView({
   accounts,
   statements,
+  allowExport = true,
 }: {
   accounts: Account[];
   statements: Statement[];
+  /** `statements.export` entitlement — the shell passes this; standalone = true. */
+  allowExport?: boolean;
 }) {
   return (
     <>
       <PageHeader
         origin={{ name: "accounts", port: 3001 }}
         title="Statements"
-        description="Monthly account statements. Download any month as CSV."
+        description={
+          allowExport
+            ? "Monthly account statements. Download any month as CSV."
+            : "Monthly account statements."
+        }
       />
 
       <div className="mt-6 space-y-4">
@@ -77,13 +84,15 @@ export default function StatementsView({
                         </span>
                       </p>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => downloadStatementCsv(account, s)}
-                    >
-                      <Download className="size-4" /> CSV
-                    </Button>
+                    {allowExport ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => downloadStatementCsv(account, s)}
+                      >
+                        <Download className="size-4" /> CSV
+                      </Button>
+                    ) : null}
                   </li>
                 ))}
               </ul>

@@ -120,6 +120,44 @@ export interface User {
   plan: "Personal" | "Premier" | "Private";
 }
 
+/**
+ * Feature grants. In a real host-provided micro-frontend the portal resolves
+ * these for the signed-in user and hands them to the shell; here the persona
+ * carries the defaults and the shell threads the effective set down to every
+ * remote as props. See docs/ARCHITECTURE.md §05a.
+ */
+export type Entitlement =
+  | "budgets" // Budgets + savings goals: nav, /budgets, dashboard cards
+  | "insights" // Insights analytics page + nav
+  | "cards.virtual" // Create / list virtual cards on /cards
+  | "payments.advanced" // "Between my accounts" transfer mode + Recurring tab
+  | "statements.export" // Statement CSV download
+  | "security.advanced" // Device + session management (not the overview)
+  | "wealth"; // Investment account + net-worth asset breakdown
+
+export const ALL_ENTITLEMENTS: Entitlement[] = [
+  "budgets",
+  "insights",
+  "cards.virtual",
+  "payments.advanced",
+  "statements.export",
+  "security.advanced",
+  "wealth",
+];
+
+export interface Persona {
+  id: "premier" | "personal";
+  label: string;
+  user: User;
+  /** One line shown under the name on the sign-in card. */
+  tagline: string;
+  /** What this persona sees (2–4 short bullets). */
+  can: string[];
+  /** What is hidden for this persona (empty for a full-access persona). */
+  cannot: string[];
+  entitlements: Entitlement[];
+}
+
 export interface Device {
   id: string;
   name: string;

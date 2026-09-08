@@ -29,12 +29,15 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { useEntitlements, type Entitlement } from "@/lib/entitlements";
 
+type NavChild = { title: string; to: string; need?: Entitlement };
 type NavItem = {
   title: string;
   to: string;
   icon: React.ComponentType<{ className?: string }>;
-  children?: { title: string; to: string }[];
+  need?: Entitlement;
+  children?: NavChild[];
 };
 
 const NAV: { label: string; items: NavItem[] }[] = [
@@ -54,8 +57,8 @@ const NAV: { label: string; items: NavItem[] }[] = [
         ],
       },
       { title: "Cards", to: "/cards", icon: CreditCard },
-      { title: "Budgets", to: "/budgets", icon: PiggyBank },
-      { title: "Insights", to: "/insights", icon: LineChart },
+      { title: "Budgets", to: "/budgets", icon: PiggyBank, need: "budgets" },
+      { title: "Insights", to: "/insights", icon: LineChart, need: "insights" },
     ],
   },
   {
@@ -75,8 +78,8 @@ const NAV: { label: string; items: NavItem[] }[] = [
         children: [
           { title: "Overview", to: "/security" },
           { title: "Two-factor auth", to: "/security/two-factor" },
-          { title: "Devices", to: "/security/devices" },
-          { title: "Sessions", to: "/security/sessions" },
+          { title: "Devices", to: "/security/devices", need: "security.advanced" },
+          { title: "Sessions", to: "/security/sessions", need: "security.advanced" },
         ],
       },
       { title: "Settings", to: "/settings", icon: Settings },
@@ -86,6 +89,18 @@ const NAV: { label: string; items: NavItem[] }[] = [
 
 export function AppSidebar() {
   const { pathname } = useLocation();
+  const entitlements = useEntitlements();
+  const allowed = (need?: Entitlement) => !need || entitlements.includes(need);
+
+  const groups = NAV.map((group) => ({
+    ...group,
+    items: group.items
+      .filter((item) => allowed(item.need))
+      .map((item) => ({
+        ...item,
+        children: item.children?.filter((c) => allowed(c.need)),
+      })),
+  })).filter((group) => group.items.length > 0);
 
   return (
     <Sidebar collapsible="icon">
@@ -108,7 +123,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {NAV.map((group) => (
+        {groups.map((group) => (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
             <SidebarGroupContent>

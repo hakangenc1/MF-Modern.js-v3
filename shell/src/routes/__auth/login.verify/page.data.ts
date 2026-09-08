@@ -3,23 +3,28 @@ import {
   type LoaderFunctionArgs,
   type ActionFunctionArgs,
 } from "@modern-js/runtime/router";
-import { verifyTwoFactorCode } from "@/mock";
-import { getPendingEmail, getSession, safeRedirect, sessionCookie } from "@/mock/session";
+import { PERSONAS, verifyTwoFactorCode } from "@/mock";
+import { getPending, getSession, safeRedirect, sessionCookie } from "@/mock/session";
 
-export type VerifyData = { email: string; redirectTo: string };
+export type VerifyData = { email: string; personaLabel: string; redirectTo: string };
 export type VerifyActionData = { error?: string; next?: string };
 
 export const loader = async ({ request }: LoaderFunctionArgs): Promise<VerifyData | Response> => {
   if (getSession(request)) return redirect("/");
-  const email = getPendingEmail(request);
-  if (!email) return redirect("/login");
+  const pending = getPending(request);
+  if (!pending) return redirect("/login");
   const url = new URL(request.url);
-  return { email, redirectTo: safeRedirect(url.searchParams.get("redirectTo")) };
+  const persona = PERSONAS.find((p) => p.id === pending.personaId);
+  return {
+    email: pending.email,
+    personaLabel: persona?.label ?? "",
+    redirectTo: safeRedirect(url.searchParams.get("redirectTo")),
+  };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const email = getPendingEmail(request);
-  if (!email) return { next: "/login" } satisfies VerifyActionData;
+  const pending = getPending(request);
+  if (!pending) return { next: "/login" } satisfies VerifyActionData;
 
   const form = await request.formData();
   const code = String(form.get("code") ?? "");
@@ -30,13 +35,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (!result.ok) return { error: result.error ?? "Invalid code." } satisfies VerifyActionData;
 
   // Modern.js 3.5 collapses multiple Set-Cookie headers on an action Response,
-  // so set only the session cookie. The short-lived pending cookie expires on
-  // its own and the /login/verify loader redirects away once a session exists.
+  // so set only the session cookie (email + persona). The short-lived pending
+  // cookie expires on its own; the entitlement override cookie stays absent so
+  // getSession() falls back to the persona's default grants.
   return new Response(JSON.stringify({ next: redirectTo } satisfies VerifyActionData), {
     status: 200,
     headers: {
       "Content-Type": "application/json",
-      "Set-Cookie": sessionCookie(email),
+      "Set-Cookie": sessionCookie(pending.email, pending.personaId),
     },
   });
 };

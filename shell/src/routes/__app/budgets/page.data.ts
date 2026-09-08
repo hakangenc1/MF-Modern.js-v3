@@ -1,11 +1,12 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@modern-js/runtime/router";
 import type { TransactionCategory } from "@/mock";
-import { getSession } from "@/mock/session";
+import { requireEntitlement } from "@/mock/session";
 import { serverStamp, type ServerStamp } from "@/lib/ssr";
 import { contributeGoal, loadBudgetProgress, loadSavingsGoals, saveBudget } from "accounts/data";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  getSession(request);
+  const denied = requireEntitlement(request, "budgets");
+  if (denied) return denied;
   const [progress, goals] = await Promise.all([loadBudgetProgress(), loadSavingsGoals()]);
   return { ...progress, goals, render: serverStamp("shell") as ServerStamp };
 };

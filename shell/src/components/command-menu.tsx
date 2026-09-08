@@ -24,21 +24,36 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
+import { useEntitlements, type Entitlement } from "@/lib/entitlements";
 
-const LINKS = [
+type Link = {
+  group: string;
+  label: string;
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  need?: Entitlement;
+};
+
+const LINKS: Link[] = [
   { group: "Go to", label: "Overview", to: "/", icon: LayoutDashboard },
   { group: "Go to", label: "Accounts", to: "/accounts", icon: Wallet },
   { group: "Go to", label: "Send money", to: "/payments", icon: ArrowLeftRight },
   { group: "Go to", label: "Payees", to: "/payments/payees", icon: Users },
   { group: "Go to", label: "Cards", to: "/cards", icon: CreditCard },
-  { group: "Go to", label: "Budgets", to: "/budgets", icon: PiggyBank },
-  { group: "Go to", label: "Insights", to: "/insights", icon: LineChart },
+  { group: "Go to", label: "Budgets", to: "/budgets", icon: PiggyBank, need: "budgets" },
+  { group: "Go to", label: "Insights", to: "/insights", icon: LineChart, need: "insights" },
   { group: "Go to", label: "Statements", to: "/statements", icon: FileText },
   { group: "Go to", label: "Notifications", to: "/notifications", icon: Bell },
   { group: "Go to", label: "Security", to: "/security", icon: ShieldCheck },
   { group: "Go to", label: "Settings", to: "/settings", icon: Settings },
   { group: "Actions", label: "New transfer", to: "/payments", icon: ArrowLeftRight },
-  { group: "Actions", label: "Move money between accounts", to: "/payments", icon: ArrowLeftRight },
+  {
+    group: "Actions",
+    label: "Move money between accounts",
+    to: "/payments",
+    icon: ArrowLeftRight,
+    need: "payments.advanced",
+  },
   { group: "Actions", label: "Add a payee", to: "/payments/payees", icon: Users },
   { group: "Actions", label: "Manage two-factor auth", to: "/security/two-factor", icon: ShieldCheck },
 ];
@@ -58,7 +73,9 @@ export function CommandMenu() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  const groups = [...new Set(LINKS.map((l) => l.group))];
+  const entitlements = useEntitlements();
+  const links = LINKS.filter((l) => !l.need || entitlements.includes(l.need));
+  const groups = [...new Set(links.map((l) => l.group))];
 
   return (
     <>
@@ -82,7 +99,7 @@ export function CommandMenu() {
             <div key={group}>
               {i > 0 && <CommandSeparator />}
               <CommandGroup heading={group}>
-                {LINKS.filter((l) => l.group === group).map((l) => (
+                {links.filter((l) => l.group === group).map((l) => (
                   <CommandItem
                     key={l.label}
                     value={l.label}

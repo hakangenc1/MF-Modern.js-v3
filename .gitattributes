@@ -6,8 +6,11 @@ pnpm-lock.yaml text eol=lf
 # Keep scripts and configs LF so Windows checkouts don't churn them.
 *.mjs text eol=lf
 *.ts text eol=lf
+*.tsx text eol=lf
 *.json text eol=lf
 *.md text eol=lf
+*.html text eol=lf
+*.css text eol=lf
 
 # Deploy artifacts are consumed on Linux — must stay LF.
 *.sh text eol=lf

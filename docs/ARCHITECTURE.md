@@ -199,10 +199,12 @@ action; `page.tsx` is the view.
 
 **The auth flow**
 
-1. **Login** — any email + password. The action sets a short-lived `bank_2fa_pending`
-   cookie and returns `{ next }` as JSON.
+1. **Login** — pick one of two **entitlement personas** (§05a). The action sets a
+   short-lived `bank_2fa_pending` cookie carrying `email|personaId` and returns `{ next }`
+   as JSON.
 2. **Verify** — the shell renders `twofactor/TwoFactorChallenge` (a federated `input-otp`
-   widget). Code `123456`. The action sets the HMAC-signed `bank_session` cookie.
+   widget). Code `123456`. The action sets the HMAC-signed `bank_session` cookie
+   (`email|personaId`).
 3. **Guarded** — `__app/layout.data.ts` verifies the cookie signature with `node:crypto`
    on every request and redirects to `/login` if it fails.
 
@@ -221,6 +223,90 @@ action; `page.tsx` is the view.
 > controls instead — `TransferView` a native `<select>`, `ActivityView` a `useState`
 > segmented toggle. Both pages stay fully server-rendered. This is dev-only and gone in
 > production builds regardless.
+
+---
+
+## 05a · Entitlements
+
+In a host-provided micro-frontend the **portal authenticates the user, resolves their
+entitlements from an entitlement service, and hands them to the shell**. The shell then
+decides which of its own surfaces to show and which entitlements each remote needs. This
+app models that end to end — the "portal" is the sign-in page.
+
+### The seven flags
+
+| Entitlement | Gates |
+|---|---|
+| `budgets` | Budgets nav + `/budgets` + the dashboard budget & savings-goal cards |
+| `insights` | Insights nav + `/insights` |
+| `cards.virtual` | "Add virtual card" + the virtual-card list on `/cards` |
+| `payments.advanced` | "Between my accounts" transfer mode + the Recurring tab |
+| `statements.export` | The CSV download button on `/statements` |
+| `security.advanced` | `/security/devices` + `/security/sessions` (the overview is always on) |
+| `wealth` | The investment account + the net-worth asset breakdown — **also filtered server-side** |
+
+`Entitlement`, `ALL_ENTITLEMENTS` and `Persona` live in `src/mock/types.ts`; the two
+personas in `src/mock/seed.ts` (`PERSONAS`).
+
+### The two personas
+
+| | **Premier** (Alexandra Morgan) | **Personal** (Sam Okafor) |
+|---|---|---|
+| Entitlements | all seven | none |
+| Sees | everything | Overview, Accounts, Payments to payees, Cards (freeze/limits/locks), Statements (view), Security overview, Settings |
+
+Both personas drive the **same** underlying accounts / transactions / payees — only the
+identity and the entitlement set differ, so the contrast is purely "what the views show".
+
+### The flow
+
+```mermaid
+flowchart LR
+  portal["Sign-in page<br/>(stands in for the host portal)"] -->|"email &#124; personaId<br/>in bank_session"| session["getSession()<br/>src/mock/session.ts"]
+  override["bank_entitlements cookie<br/>(runtime override, persona-scoped)"] --> session
+  session -->|"session.entitlements"| layout["__app/layout.data.ts loader"]
+  layout --> ctx["&lt;EntitlementsProvider&gt;<br/>useCan() / useEntitlements()"]
+  ctx --> nav["shell nav + route guards<br/>app-sidebar, command-menu, page.data.ts"]
+  ctx --> wrap["shell route wrappers<br/>__app/**/page.tsx"]
+  wrap -->|"allowInternal, allowRecurring,<br/>allowExport, allowAdvanced … (plain props)"| remotes["federated remote views<br/>TransferView, ActivityView, SecurityView …"]
+  layout -->|"{ wealth: … }"| data["accounts/data loadAccountsList()<br/>filters + recomputes net worth"]
+```
+
+**Two cookies**, both HMAC-signed (`node:crypto`, same `SESSION_SECRET`):
+
+- `bank_session` = `email|personaId` — who you are + which persona.
+- `bank_entitlements` = `personaId::["flag",…]` — the runtime override. Absent until you
+  toggle something; **scoped to the persona** so switching users drops a stale override.
+
+### How a remote gets gated
+
+A remote **never imports anything entitlement-related**. The shell wrapper reads `useCan(…)`
+and passes a plain boolean:
+
+```tsx
+// shell/src/routes/__app/payments/page.tsx
+<TransferView … allowInternal={useCan("payments.advanced")} />
+```
+
+```tsx
+// payments/src/federation/TransferView.tsx — router-free, prop-driven
+export default function TransferView({ allowInternal = true, … }) {
+  …
+  {allowInternal ? <Tabs>…</Tabs> : null}
+}
+```
+
+The prop **defaults to `true`**, so each remote still renders its full view when run
+standalone on its own port.
+
+### Changing entitlements at runtime
+
+The top-bar **Entitlements** popover and the **Settings → Entitlements** card share
+`EntitlementToggles`. Each switch POSTs the full list to the action-only route
+`__app/entitlements/page.data.ts`, which rewrites `bank_entitlements` and returns 200 +
+`Set-Cookie`. React Router then revalidates the app layout loader, `getSession()` re-reads
+the cookie, and the shell + every federated view re-render with the new grants — no reload,
+just the top navigation-progress bar.
 
 ---
 

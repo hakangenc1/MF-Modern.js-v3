@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { PendingButton, PageHeader, SectionCard } from "@/components/patterns/kit";
+import { EntitlementToggles } from "@/components/entitlement-toggles";
 import type { SettingsData } from "./page.data";
 
 export default function SettingsPage() {
-  const { profile, accounts } = useLoaderData() as SettingsData;
+  const { profile, accounts, entitlements, persona } = useLoaderData() as SettingsData;
   return (
     <>
       <Helmet>
@@ -23,6 +24,18 @@ export default function SettingsPage() {
           <PrefsForm profile={profile} />
           <NicknamesForm accounts={accounts} />
         </div>
+      </div>
+      <div className="mt-6">
+        <SectionCard
+          title="Entitlements (demo)"
+          description={`Signed in as the ${persona.label} profile. In production the host portal resolves these and hands them to the shell; here you can flip them to see how the shell nav, routes and every federated remote respond.`}
+        >
+          <EntitlementToggles
+            current={entitlements}
+            personaLabel={persona.label}
+            personaDefaults={persona.defaults}
+          />
+        </SectionCard>
       </div>
     </>
   );

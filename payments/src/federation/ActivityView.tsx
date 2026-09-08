@@ -31,11 +31,14 @@ const STATUS: Record<TransferStatus, { label: string; variant: "secondary" | "ou
 export default function ActivityView({
   data,
   pendingId = null,
+  allowRecurring = true,
   onCancel,
   onToggleRecurring,
 }: {
   data: TransfersData;
   pendingId?: string | null;
+  /** `payments.advanced` entitlement — the shell passes this; standalone = true. */
+  allowRecurring?: boolean;
   onCancel?: (id: string) => void;
   onToggleRecurring?: (id: string, active: boolean) => void;
 }) {
@@ -52,9 +55,11 @@ export default function ActivityView({
           <TabsTrigger value="scheduled" className="gap-1.5">
             <CalendarClock className="size-4" /> Scheduled ({data.scheduled.length})
           </TabsTrigger>
-          <TabsTrigger value="recurring" className="gap-1.5">
-            <Repeat className="size-4" /> Recurring ({data.recurring.length})
-          </TabsTrigger>
+          {allowRecurring ? (
+            <TabsTrigger value="recurring" className="gap-1.5">
+              <Repeat className="size-4" /> Recurring ({data.recurring.length})
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger value="history" className="gap-1.5">
             <CheckCircle2 className="size-4" /> History ({data.history.length})
           </TabsTrigger>

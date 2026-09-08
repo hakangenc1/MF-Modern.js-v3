@@ -41,9 +41,30 @@ export interface AccountsListData {
   netWorth: NetWorth;
 }
 
-export async function loadAccountsList(): Promise<AccountsListData> {
-  const [accounts, netWorth] = await Promise.all([getAccounts(), getNetWorth()]);
-  return { accounts, netWorth };
+/**
+ * @param wealth  when `false`, the investment account is dropped and the
+ *   net-worth totals are recomputed from the remaining accounts. This is the
+ *   one place an entitlement (`wealth`) shapes the server response, not just the
+ *   view — the shell passes `{ wealth: session.entitlements.includes("wealth") }`.
+ */
+export async function loadAccountsList(
+  opts: { wealth?: boolean } = {},
+): Promise<AccountsListData> {
+  const [allAccounts, netWorth] = await Promise.all([getAccounts(), getNetWorth()]);
+  if (opts.wealth === false) {
+    const accounts = allAccounts.filter((a) => a.type !== "investment");
+    const assets = accounts
+      .filter((a) => a.balance > 0)
+      .reduce((s, a) => s + a.balance, 0);
+    const liabilities = accounts
+      .filter((a) => a.balance < 0)
+      .reduce((s, a) => s + Math.abs(a.balance), 0);
+    return {
+      accounts,
+      netWorth: { ...netWorth, total: assets - liabilities, assets, liabilities },
+    };
+  }
+  return { accounts: allAccounts, netWorth };
 }
 
 export async function loadAccountHeader(accountId: string): Promise<Account | null> {

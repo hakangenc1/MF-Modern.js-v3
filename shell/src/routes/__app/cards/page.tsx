@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PageHeader, SectionCard } from "@/components/patterns/kit";
+import { useCan } from "@/lib/entitlements";
 import type { CardsData } from "./page.data";
 
 const FACE: Record<BankCard["color"], string> = {
@@ -38,6 +39,7 @@ const LOCKABLE: TransactionCategory[] = [
 
 export default function CardsRoute() {
   const { cards } = useLoaderData() as CardsData;
+  const allowVirtual = useCan("cards.virtual");
   return (
     <>
       <Helmet>
@@ -49,18 +51,22 @@ export default function CardsRoute() {
       </Helmet>
       <PageHeader
         title="Cards"
-        description="Freeze instantly, set limits, lock categories, and spin up virtual card numbers."
+        description={
+          allowVirtual
+            ? "Freeze instantly, set limits, lock categories, and spin up virtual card numbers."
+            : "Freeze instantly, set spending limits, and lock spend categories."
+        }
       />
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         {cards.map((card) => (
-          <CardPanel key={card.id} card={card} />
+          <CardPanel key={card.id} card={card} allowVirtual={allowVirtual} />
         ))}
       </div>
     </>
   );
 }
 
-function CardPanel({ card: initial }: { card: BankCard }) {
+function CardPanel({ card: initial, allowVirtual }: { card: BankCard; allowVirtual: boolean }) {
   const fetcher = useFetcher<{ card: BankCard | null }>();
   const card = fetcher.data?.card ?? initial;
   const busyIntent =
@@ -183,38 +189,40 @@ function CardPanel({ card: initial }: { card: BankCard }) {
         </p>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium">Virtual cards</p>
-          <Button variant="outline" size="sm" onClick={() => setVirtualOpen(true)}>
-            <Plus className="size-4" /> New
-          </Button>
+      {allowVirtual ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">Virtual cards</p>
+            <Button variant="outline" size="sm" onClick={() => setVirtualOpen(true)}>
+              <Plus className="size-4" /> New
+            </Button>
+          </div>
+          {card.virtualCards.length ? (
+            <ul className="divide-y rounded-lg border">
+              {card.virtualCards.map((v) => (
+                <li key={v.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                  <span>
+                    <span className="font-medium">{v.label}</span>{" "}
+                    <span className="font-mono text-muted-foreground">{v.mask}</span>
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busyIntent === "del-virtual"}
+                    onClick={() => submit({ intent: "del-virtual", vid: v.id })}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              No virtual cards. Create one for a single merchant or subscription.
+            </p>
+          )}
         </div>
-        {card.virtualCards.length ? (
-          <ul className="divide-y rounded-lg border">
-            {card.virtualCards.map((v) => (
-              <li key={v.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                <span>
-                  <span className="font-medium">{v.label}</span>{" "}
-                  <span className="font-mono text-muted-foreground">{v.mask}</span>
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={busyIntent === "del-virtual"}
-                  onClick={() => submit({ intent: "del-virtual", vid: v.id })}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            No virtual cards. Create one for a single merchant or subscription.
-          </p>
-        )}
-      </div>
+      ) : null}
 
       <Button
         variant="ghost"

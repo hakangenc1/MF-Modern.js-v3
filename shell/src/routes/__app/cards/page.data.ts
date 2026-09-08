@@ -10,19 +10,28 @@ import {
   type Card,
   type TransactionCategory,
 } from "@/mock";
-import { getSession } from "@/mock/session";
+import { getSession, loginRedirect } from "@/mock/session";
 
 export type CardsData = { cards: Card[] };
 
-export const loader = async ({ request }: LoaderFunctionArgs): Promise<CardsData> => {
-  getSession(request);
+export const loader = async ({ request }: LoaderFunctionArgs): Promise<CardsData | Response> => {
+  if (!getSession(request)) return loginRedirect(request);
   return { cards: await getCards() };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+  const session = getSession(request);
+  if (!session) return loginRedirect(request);
   const form = await request.formData();
   const id = String(form.get("id"));
   const intent = String(form.get("intent") ?? "freeze");
+
+  if (
+    (intent === "add-virtual" || intent === "del-virtual") &&
+    !session.entitlements.includes("cards.virtual")
+  ) {
+    return { card: null };
+  }
 
   let card: Card | null = null;
   switch (intent) {

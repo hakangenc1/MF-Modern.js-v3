@@ -46,6 +46,7 @@ interface DashboardData {
   accounts: Account[];
   payees: Payee[];
   security: SecurityOverview;
+  canBudgets: boolean;
   budget: { rows: BudgetProgress[]; totalLimit: number; totalSpent: number };
   goal: SavingsGoal | null;
   cashflow: Promise<CashflowPoint[]>;
@@ -68,6 +69,7 @@ export default function Dashboard() {
     accounts,
     payees,
     security,
+    canBudgets,
     budget,
     goal,
     cashflow,
@@ -183,12 +185,16 @@ export default function Dashboard() {
         </div>
         <div className="space-y-4">
           <SecurityStatusCard overview={security} />
-          <BudgetSummaryCard
-            rows={budget.rows}
-            totalLimit={budget.totalLimit}
-            totalSpent={budget.totalSpent}
-          />
-          {goal ? <SavingsGoalCard goal={goal} /> : null}
+          {canBudgets ? (
+            <>
+              <BudgetSummaryCard
+                rows={budget.rows}
+                totalLimit={budget.totalLimit}
+                totalSpent={budget.totalSpent}
+              />
+              {goal ? <SavingsGoalCard goal={goal} /> : null}
+            </>
+          ) : null}
         </div>
       </div>
     </>
