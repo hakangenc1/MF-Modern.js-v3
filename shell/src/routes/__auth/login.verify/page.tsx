@@ -10,7 +10,7 @@ import {
 import { Helmet } from "@modern-js/runtime/head";
 import { DEMO_2FA_CODE } from "@/mock";
 import { AuthShell } from "@/components/auth-shell";
-import { TwoFactorChallenge } from "security/TwoFactorChallenge";
+import { TwoFactorChallenge } from "twofactor/TwoFactorChallenge";
 import type { VerifyData, VerifyActionData } from "./page.data";
 
 export default function VerifyRoute() {

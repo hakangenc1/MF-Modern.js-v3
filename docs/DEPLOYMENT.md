@@ -77,7 +77,8 @@ and re-adds the reference. Don't hand-remove it.
 
 ## 2. What you are deploying
 
-Four long-lived Node processes. Each one is **`install → build → deploy → run`**:
+**Five** long-lived Node processes (`shell` + `accounts` `payments` `security` `twofactor`).
+Each one is **`install → build → deploy → run`**:
 
 | Step | Command | Produces |
 |---|---|---|
@@ -99,37 +100,40 @@ flowchart LR
         AC["accounts<br/>:3001"]
         PY["payments<br/>:3002"]
         SC["security<br/>:3003"]
+        TF["twofactor<br/>:3004"]
     end
 
-    SH -. "fetches /static/mf-manifest.json<br/>at render time" .-> AC & PY & SC
-    AC & PY & SC -. "serve their own hashed JS/CSS/font" .-> U
+    SH -. "fetch mf-manifest.json at render time" .-> AC & PY & SC & TF
+    PY -. "composes the 2FA widget" .-> TF
+    AC & PY & SC & TF -. "serve their own hashed JS/CSS/font" .-> U
 ```
 
 The browser loads a page from **shell** only. The shell's server fetches each remote's
 manifest to know which chunks to embed; the browser then pulls those chunks **directly from
 each remote's origin** — which is why every remote must be publicly reachable and must know
-its own public URL (`assetPrefix`).
+its own public URL (`assetPrefix`). `payments` additionally consumes `twofactor` (a remote
+composing a remote), so it also needs `TWOFACTOR_ORIGIN`.
 
 ### Environment variables
 
-| Variable | shell | accounts | payments | security | Value |
-|---|:--:|:--:|:--:|:--:|---|
-| `PORT` | ✓ | ✓ | ✓ | ✓ | Injected by the host. `node .output/index` binds it. |
-| `SHELL_ORIGIN` | ✓ | | | | Public URL of the shell, e.g. `https://northwind.example`. |
-| `ACCOUNTS_ORIGIN` | ✓ | ✓ | | | Public URL of the accounts service. Shell uses it to build the manifest URL; accounts uses it as its own `assetPrefix`. |
-| `PAYMENTS_ORIGIN` | ✓ | | ✓ | | …same, payments. |
-| `SECURITY_ORIGIN` | ✓ | | | ✓ | …same, security. |
-| `SESSION_SECRET` | ✓ | ✓ | | ✓ | HMAC key for the session cookie. **Must be identical** on shell, accounts, security. Generate 32+ random bytes. |
-| `MODERN_MF_AUTO_CORS` | ✓ | ✓ | ✓ | ✓ | Set to `true`. Makes each remote send `Access-Control-Allow-Origin: *` on its manifest / `remoteEntry.js` / chunks so the **browser** can fetch them cross-origin — required for client-side federation and SPA navigation. Without it every page load logs `blocked by CORS policy` and in-app navigation dies. |
-| `MODERNJS_DEPLOY` | ✓ | ✓ | ✓ | ✓ | Set to `node`. Render auto-injects `MODERNJS_DEPLOY=render`, which this Modern.js version rejects (`Unknown deploy target: 'render'`) — `modern deploy` only accepts `node` / `vercel` / `netlify`. Pin it to `node`. (Harmless off-Render.) |
+| Variable | shell | accounts | payments | security | twofactor | Value |
+|---|:--:|:--:|:--:|:--:|:--:|---|
+| `PORT` | ✓ | ✓ | ✓ | ✓ | ✓ | Injected by the host. `node .output/index` binds it. |
+| `SHELL_ORIGIN` | ✓ | | | | | Public URL of the shell, e.g. `https://northwind.example`. |
+| `ACCOUNTS_ORIGIN` | ✓ | ✓ | | | | Public URL of the accounts service. Shell uses it to build the manifest URL; accounts uses it as its own `assetPrefix`. |
+| `PAYMENTS_ORIGIN` | ✓ | | ✓ | | | …same, payments. |
+| `SECURITY_ORIGIN` | ✓ | | | ✓ | | …same, security. |
+| `TWOFACTOR_ORIGIN` | ✓ | | ✓ | | ✓ | …same, twofactor. Both the **shell** (login) and **payments** (transfer) consume it, so both need it. |
+| `SESSION_SECRET` | ✓ | ✓ | | ✓ | | HMAC key for the session cookie. **Must be identical** on shell, accounts, security. Generate 32+ random bytes. |
+| `MODERN_MF_AUTO_CORS` | ✓ | ✓ | ✓ | ✓ | ✓ | Set to `true`. Makes each remote send `Access-Control-Allow-Origin: *` on its manifest / `remoteEntry.js` / chunks so the **browser** can fetch them cross-origin — required for client-side federation and SPA navigation. Without it every page load logs `blocked by CORS policy` and in-app navigation dies. |
+| `MODERNJS_DEPLOY` | ✓ | ✓ | ✓ | ✓ | ✓ | Set to `node`. Render auto-injects `MODERNJS_DEPLOY=render`, which this Modern.js version rejects (`Unknown deploy target: 'render'`) — `modern deploy` only accepts `node` / `vercel` / `netlify`. Pin it to `node`. (Harmless off-Render.) |
 
 Every `*_ORIGIN` must be a full origin with scheme and **no trailing slash**:
 `https://northwind-accounts.onrender.com`. Without it a remote falls back to
-`http://localhost:<port>` and its assets 404 in production.
+`RENDER_EXTERNAL_URL` (fine for a remote's own `assetPrefix`) then `http://localhost:<port>`.
 
-`MODERN_MF_AUTO_CORS` matters on the three **remotes** (the shell is the origin doing the
-fetching, not the target) — but setting it everywhere is harmless, so the examples below
-just put it on all four.
+`MODERN_MF_AUTO_CORS` matters on the four **remotes** (whoever is being fetched cross-origin)
+— but setting it everywhere is harmless, so the examples below just put it on all five.
 
 Each config also falls back to `RENDER_EXTERNAL_URL` (which Render injects automatically) if
 its `*_ORIGIN` is unset — so on Render a **remote** needs no origin var of its own; only the
@@ -146,12 +150,13 @@ machine.
 # from the repo root — package all four (→ .output/ each; runs modern build too)
 npm run deploy
 
-# run all four from their .output/, with the wiring set explicitly
+# run all five from their .output/, with the wiring set explicitly
 SESSION_SECRET=$(openssl rand -hex 32) \
 SHELL_ORIGIN=http://localhost:3000 \
 ACCOUNTS_ORIGIN=http://localhost:3001 \
 PAYMENTS_ORIGIN=http://localhost:3002 \
 SECURITY_ORIGIN=http://localhost:3003 \
+TWOFACTOR_ORIGIN=http://localhost:3004 \
 npm run start
 ```
 
@@ -178,7 +183,7 @@ Windows PowerShell equivalent for the env vars:
 ```powershell
 $env:SESSION_SECRET="<32-byte hex>"; $env:SHELL_ORIGIN="http://localhost:3000"
 $env:ACCOUNTS_ORIGIN="http://localhost:3001"; $env:PAYMENTS_ORIGIN="http://localhost:3002"
-$env:SECURITY_ORIGIN="http://localhost:3003"; npm run start
+$env:SECURITY_ORIGIN="http://localhost:3003"; $env:TWOFACTOR_ORIGIN="http://localhost:3004"; npm run start
 ```
 
 ---
@@ -202,9 +207,10 @@ adapter work.
 
 ### 5.1 Manual (clearest — do this first time)
 
-Create the **remotes first**, then the shell (the shell needs their URLs).
+Create the **remotes first** (`twofactor` before `payments` — payments composes it), then
+the shell.
 
-**For each of `accounts`, `payments`, `security`:**
+**For each of `accounts`, `security`, `twofactor`, `payments`:**
 
 1. Render Dashboard → **New → Web Service** → connect the GitHub repo.
 2. **Root Directory**: `accounts` (resp. `payments`, `security`).
@@ -224,8 +230,10 @@ Create the **remotes first**, then the shell (the shell needs their URLs).
    - Leave `<NAME>_ORIGIN` unset for now.
 6. Create the service. Wait for the first deploy. Copy its URL, e.g.
    `https://northwind-accounts.onrender.com`.
-7. Go back to **Environment** and add `ACCOUNTS_ORIGIN` = that URL (no trailing slash).
-   Save → it redeploys. Repeat the pattern for payments/security.
+7. Go back to **Environment** and add `<NAME>_ORIGIN` = that URL (no trailing slash).
+   Save → it redeploys. Repeat for each remote.
+8. **`payments` also needs** `TWOFACTOR_ORIGIN = https://northwind-twofactor.onrender.com`
+   (it renders the 2FA widget in the transfer flow).
 
 **Then the shell:**
 
@@ -238,14 +246,14 @@ Create the **remotes first**, then the shell (the shell needs their URLs).
    - `ACCOUNTS_ORIGIN` = `https://northwind-accounts.onrender.com`
    - `PAYMENTS_ORIGIN` = `https://northwind-payments.onrender.com`
    - `SECURITY_ORIGIN` = `https://northwind-security.onrender.com`
+   - `TWOFACTOR_ORIGIN` = `https://northwind-twofactor.onrender.com`
    - `SHELL_ORIGIN` = the shell's own URL (set it after the first deploy, same trick).
-4. Deploy. Open the shell URL → sign in → click through.
+4. Deploy. Open the shell URL → sign in (2FA served by twofactor) → click through.
 
 ### 5.2 Blueprint (`render.yaml`)
 
-Commit this at the repo root to create all four in one shot. You still fill the shell's
-three `*_ORIGIN` values once the remote URLs exist (Render can't know them at blueprint
-time).
+Commit this at the repo root to create all five in one shot. You still fill the `sync: false`
+`*_ORIGIN` values once the service URLs exist (Render can't know them at blueprint time).
 
 ```yaml
 envVarGroups:
@@ -282,6 +290,8 @@ services:
       - fromGroup: northwind-shared
       - key: PAYMENTS_ORIGIN
         sync: false
+      - key: TWOFACTOR_ORIGIN        # payments composes the 2FA widget
+        sync: false
 
   - type: web
     name: northwind-security
@@ -293,6 +303,18 @@ services:
     envVars:
       - fromGroup: northwind-shared
       - key: SECURITY_ORIGIN
+        sync: false
+
+  - type: web
+    name: northwind-twofactor
+    runtime: node
+    rootDir: twofactor
+    plan: starter
+    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm run deploy
+    startCommand: node .output/index
+    envVars:
+      - fromGroup: northwind-shared
+      - key: TWOFACTOR_ORIGIN
         sync: false
 
   - type: web
@@ -311,6 +333,8 @@ services:
       - key: PAYMENTS_ORIGIN
         sync: false
       - key: SECURITY_ORIGIN
+        sync: false
+      - key: TWOFACTOR_ORIGIN
         sync: false
 ```
 
@@ -385,9 +409,14 @@ Then push each image to your registry and deploy:
 x-mf: &mf { MODERN_MF_AUTO_CORS: "true", SESSION_SECRET: dev }
 
 services:
-  accounts: { build: ./accounts, environment: { <<: *mf, PORT: 3001, ACCOUNTS_ORIGIN: "http://localhost:3001" }, ports: ["3001:3001"] }
-  payments: { build: ./payments, environment: { <<: *mf, PORT: 3002, PAYMENTS_ORIGIN: "http://localhost:3002" }, ports: ["3002:3002"] }
-  security: { build: ./security, environment: { <<: *mf, PORT: 3003, SECURITY_ORIGIN: "http://localhost:3003" }, ports: ["3003:3003"] }
+  accounts:  { build: ./accounts,  environment: { <<: *mf, PORT: 3001, ACCOUNTS_ORIGIN: "http://localhost:3001" }, ports: ["3001:3001"] }
+  security:  { build: ./security,  environment: { <<: *mf, PORT: 3003, SECURITY_ORIGIN: "http://localhost:3003" }, ports: ["3003:3003"] }
+  twofactor: { build: ./twofactor, environment: { <<: *mf, PORT: 3004, TWOFACTOR_ORIGIN: "http://localhost:3004" }, ports: ["3004:3004"] }
+  payments:
+    build: ./payments
+    environment: { <<: *mf, PORT: 3002, PAYMENTS_ORIGIN: "http://localhost:3002", TWOFACTOR_ORIGIN: "http://localhost:3004" }
+    ports: ["3002:3002"]
+    depends_on: [twofactor]
   shell:
     build: ./shell
     environment:
@@ -397,8 +426,9 @@ services:
       ACCOUNTS_ORIGIN: "http://localhost:3001"
       PAYMENTS_ORIGIN: "http://localhost:3002"
       SECURITY_ORIGIN: "http://localhost:3003"
+      TWOFACTOR_ORIGIN: "http://localhost:3004"
     ports: ["3000:3000"]
-    depends_on: [accounts, payments, security]
+    depends_on: [accounts, payments, security, twofactor]
 ```
 
 ---
@@ -472,25 +502,27 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      accounts: ${{ steps.f.outputs.accounts }}
-      payments: ${{ steps.f.outputs.payments }}
-      security: ${{ steps.f.outputs.security }}
-      shell:    ${{ steps.f.outputs.shell }}
+      accounts:  ${{ steps.f.outputs.accounts }}
+      payments:  ${{ steps.f.outputs.payments }}
+      security:  ${{ steps.f.outputs.security }}
+      twofactor: ${{ steps.f.outputs.twofactor }}
+      shell:     ${{ steps.f.outputs.shell }}
     steps:
       - uses: actions/checkout@v4
       - id: f
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            accounts: ['accounts/**']
-            payments: ['payments/**']
-            security: ['security/**']
-            shell:    ['shell/**']
+            accounts:  ['accounts/**']
+            payments:  ['payments/**']
+            security:  ['security/**']
+            twofactor: ['twofactor/**']
+            shell:     ['shell/**']
   build:
     needs: changes
     runs-on: ubuntu-latest
     strategy:
-      matrix: { app: [accounts, payments, security, shell] }
+      matrix: { app: [accounts, security, twofactor, payments, shell] }
     if: ${{ needs.changes.outputs[matrix.app] == 'true' }}
     steps:
       - uses: actions/checkout@v4
@@ -512,16 +544,17 @@ worth a review rule.
 
 ## 10. Deploy order & smoke test
 
-**Order:** remotes first (`accounts`, `payments`, `security` — any order), then `shell`. A
-remote coming up after the shell is fine too; the shell fetches manifests per-request, so
-it recovers on the next page load.
+**Order:** remotes first (`twofactor` **before** `payments`; the rest any order), then
+`shell`. A remote coming up after a consumer is fine too — manifests are fetched
+per-request, so it recovers on the next load.
 
 **Smoke test after every shell deploy:**
 
 | Check | How | Pass |
 |---|---|---|
 | Shell is up | `curl -I https://<shell>` | `200` |
-| Auth | Sign in, 2FA `123456` | lands on dashboard |
+| Auth + 2FA widget | Sign in → the 2FA step | served by `twofactor` (Network: `northwind-twofactor…/mf-manifest.json`); `123456` → dashboard |
+| Transfer 2FA | `/payments` → fill a transfer → Review → Confirm & send | the review dialog shows the **embedded** OTP widget; `123456` → transfer completes |
 | SSR (federated) | View source of `/` | real widget markup (`Recent activity`, transaction rows) in HTML, not a skeleton |
 | **Browser console** | Open DevTools console, load `/`, click through 3–4 routes | **stays clean** — no `blocked by CORS policy`, no `Failed to get manifest #RUNTIME-003` |
 | SPA navigation | Click nav links | content swaps without a full reload; federated pages (`/accounts`, `/payments`) render |
@@ -533,6 +566,8 @@ Triage:
 
 - `blocked by CORS policy` / `RUNTIME-003` in the console, SSR HTML fine but SPA dead →
   `MODERN_MF_AUTO_CORS` isn't set on that remote.
+- 2FA step never loads / transfer "Confirm & send" throws → `TWOFACTOR_ORIGIN` missing on
+  the **shell** (login) or **payments** (transfer).
 - Federation chunks **404** → the remote's `*_ORIGIN` is wrong or has a trailing slash.
 - `Unexpected token '<'` / `'}'` server-side → the [§1b](#1b-the-federation-patch-already-applied--just-dont-drop-it) patch didn't apply (`pnpm install` in that app).
 - `/security` bounces to login → `SESSION_SECRET` differs between services.

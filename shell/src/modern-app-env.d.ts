@@ -3,3 +3,4 @@
 declare module "accounts/*";
 declare module "payments/*";
 declare module "security/*";
+declare module "twofactor/*";

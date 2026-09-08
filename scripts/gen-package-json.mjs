@@ -82,7 +82,7 @@ const overrides = {
 const sortObj = (o) =>
   Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b)));
 
-for (const app of ["shell", "accounts", "payments", "security"]) {
+for (const app of ["shell", "accounts", "payments", "security", "twofactor"]) {
   const pkg = {
     name: `northwind-${app}`,
     version: "1.0.0",

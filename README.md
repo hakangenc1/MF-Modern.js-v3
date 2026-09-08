@@ -1,26 +1,27 @@
 # Northwind Bank — SSR Micro‑Frontend Banking App
 
-Four **independent applications** — a host shell and three domain remotes — wired together
-at runtime with **Module Federation 2.0** and **server‑side rendered + streamed** into a
-single page.
+**Five independent applications** — a host shell and four domain remotes — wired together at
+runtime with **Module Federation 2.0** and **server‑side rendered + streamed** into a single
+page.
 
 Each folder here is a **standalone project**: its own `package.json` with real version
-numbers, its own `node_modules`, its own git repository. There is **no monorepo / pnpm
-workspace** — `shell/` could live in a different repo on a different machine and nothing
-would change. Shared UI is just shadcn components copied into each app (that's how shadcn
-works); it is **not** shipped as a federated module.
+numbers, its own `node_modules`. Shared UI is just shadcn components copied into each app
+(that's how shadcn works); it is **not** shipped as a federated module.
 
 ```
-northwind-mfe/            ← this folder: only orchestration scripts, no code, no node_modules
-├── shell/       :3000    ← host. own repo. routing, auth + 2FA, app chrome, /cards, /insights
-├── accounts/    :3001    ← remote. own repo. exposes AccountsView, AccountDetailView, widgets, data
-├── payments/    :3002    ← remote. own repo. exposes TransferView, PayeesView, ActivityView, QuickTransferCard, data
-└── security/    :3003    ← remote. own repo. exposes Security/TwoFactor/Devices/SessionsView, TwoFactorChallenge, data
+northwind-mfe/            ← this folder: only orchestration scripts, no app code
+├── shell/       :3000    ← host. routing, auth + 2FA, app chrome, /cards, /insights
+├── accounts/    :3001    ← remote. exposes AccountsView, AccountDetailView, widgets, data
+├── payments/    :3002    ← remote. exposes TransferView, PayeesView, ActivityView, QuickTransferCard, data
+│                             — composes twofactor in the transfer flow
+├── security/    :3003    ← remote. exposes Security/TwoFactor/Devices/SessionsView, data
+└── twofactor/   :3004    ← remote. exposes TwoFactorChallenge, TwoFactorDialog, TwoFactorGate, data
+                              — the reusable 2FA widget; shell uses it at login, payments before a transfer
 ```
 
 ## Docs
 
-- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — how the four apps compose, the
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — how the five apps compose, the
   streaming-SSR render path, the federation contract, the performance levers, and the
   deploy topology. Renders on GitHub (Mermaid diagrams).
 - **[docs/architecture.html](docs/architecture.html)** — the same reference as a designed,
@@ -38,8 +39,8 @@ through **corepack** (bundled with Node) — the version is pinned via each app'
 `pnpm@latest` that older corepack builds can't launch. Run once: `corepack enable`.
 
 ```bash
-node scripts/run.mjs install     # or: npm run install:all  — installs all 4 apps
-npm run dev                      # boots all 4 (remotes first, then the shell)
+node scripts/run.mjs install     # or: npm run install:all  — installs all 5 apps
+npm run dev                      # boots all 5 (remotes first, then the shell)
 ```
 
 Open **http://localhost:3000** → any email + password → 2FA code **`123456`**.
@@ -47,7 +48,7 @@ Open **http://localhost:3000** → any email + password → 2FA code **`123456`*
 | root command | what it does |
 |---|---|
 | `npm run install:all` | `pnpm install` in each app |
-| `npm run dev` | clears caches, boots the 3 remotes one‑by‑one, then the shell (refuses to start if a previous run is still on :3000‑:3003) |
+| `npm run dev` | clears caches, boots the 4 remotes one‑by‑one, then the shell (refuses to start if a previous run is still on :3000‑:3004) |
 | `npm run stop` | kill a lost `dev`/`start` run whose terminal is gone but whose ports are still held |
 | `npm run build` | `modern build` in each app → `dist/` |
 | `npm run deploy` | `modern deploy` in each app → `.output/` (self‑contained server) |
@@ -95,15 +96,15 @@ Every app pins the same Module Federation version matrix via `pnpm.overrides` in
   renders the remote's **router‑free** presentational components with the resolved data.
 - Remote components use `<a href>` / GET `<form>` (never router hooks) so they render
   identically standalone or federated into the shell's SSR stream.
+- **A remote can compose another remote.** `payments` declares `twofactor` as its own
+  remote and renders `twofactor/TwoFactorChallenge` inside the transfer confirm dialog. The
+  `shell` also consumes `twofactor` (at `/login/verify`). Both hosts set `TWOFACTOR_ORIGIN`.
 - **`useId` under streamed SSR.** Modern.js numbers React's `useId` by streamed‑boundary
-  position, so a Radix trigger (Popover / Select / Tabs / DropdownMenu) that renders on
-  the server hydrates with a different generated id than the client computes —
-  "Prop `aria-controls` did not match". Three rules keep every route's SSR HTML free of
-  `useId`‑derived ids: charts pass a stable `id` to `ChartContainer` (shadcn's own API);
-  the header menus render a static trigger and mount the Radix popover/dropdown after
-  hydration; and the two federated views that had a server‑rendered Radix trigger use
-  plain controls instead — `TransferView` a native `<select>`, `ActivityView` a `useState`
-  segmented toggle. Both pages stay fully server‑rendered.
+  position, so a Radix trigger (Popover / Select / Tabs / DropdownMenu) rendered on the
+  server can hydrate with a different generated id — a **dev‑only** `Prop \`aria-controls\`
+  did not match` console warning that React reconciles and that does **not** appear in prod
+  builds. Header menus + charts still use the mount‑gate / stable‑`id` mitigations; the
+  federated views use plain shadcn `Select`/`Tabs`.
 
 ## Known limitations
 
@@ -128,5 +129,5 @@ Every app pins the same Module Federation version matrix via `pnpm.overrides` in
 - Run **one** dev server at a time. Two concurrent `npm run dev` runs clear and regenerate
   each other's `node_modules/.modern-js` mid‑build, which surfaces as
   `html-rspack-plugin: Can't resolve .modern-js/index/index.html` or
-  `Can't find renderBundle index`. `dev.mjs` now aborts if :3000‑:3003 are busy;
+  `Can't find renderBundle index`. `dev.mjs` now aborts if :3000‑:3004 are busy;
   `npm run stop` clears a lost run.

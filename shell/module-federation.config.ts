@@ -12,6 +12,7 @@ export default createModuleFederationConfig({
     accounts: `accounts@${origin("accounts", 3001)}/static/mf-manifest.json`,
     payments: `payments@${origin("payments", 3002)}/static/mf-manifest.json`,
     security: `security@${origin("security", 3003)}/static/mf-manifest.json`,
+    twofactor: `twofactor@${origin("twofactor", 3004)}/static/mf-manifest.json`,
   },
   shared: {
     react: { singleton: true, requiredVersion: false },

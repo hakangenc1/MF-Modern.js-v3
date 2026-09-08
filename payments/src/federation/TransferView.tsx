@@ -1,5 +1,5 @@
-import { useState, type SelectHTMLAttributes } from "react";
-import { ArrowRight, CheckCircle2, Loader2, Send } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, CheckCircle2, Send } from "lucide-react";
 import { formatCurrency, type Transfer } from "@/mock";
 import {
   Card,
@@ -11,7 +11,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +30,8 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, Money } from "@/components/patterns/kit";
+import { TwoFactorChallenge } from "twofactor/TwoFactorChallenge";
+import { verifyCode } from "twofactor/data";
 import type { TransferContext } from "./data";
 
 export interface TransferValues {
@@ -55,17 +64,43 @@ export default function TransferView({
     when: "now",
   });
   const [reviewing, setReviewing] = useState(false);
+  // The review dialog has two steps: confirm the details, then pass 2FA.
+  const [step, setStep] = useState<"review" | "verify">("review");
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const from = accounts.find((a) => a.id === values.fromAccountId);
   const payee = payees.find((p) => p.id === values.toPayeeId);
   const amountCents = Math.round(Number(values.amount || "0") * 100);
   const valid = amountCents > 0 && from && payee && amountCents <= (from?.available ?? 0);
 
+  // Reset the dialog to step one whenever it closes.
+  useEffect(() => {
+    if (!reviewing) {
+      setStep("review");
+      setVerifyError(null);
+      setVerifying(false);
+    }
+  }, [reviewing]);
+
   if (result?.ok && result.transfer) {
     return <Confirmation transfer={result.transfer} fromName={from?.name ?? ""} />;
   }
 
   const set = (patch: Partial<TransferValues>) => setValues((v) => ({ ...v, ...patch }));
+
+  const handleVerify = async (code: string) => {
+    setVerifying(true);
+    setVerifyError(null);
+    const res = await verifyCode(code);
+    setVerifying(false);
+    if (res.ok) {
+      setReviewing(false);
+      onSubmit(values);
+    } else {
+      setVerifyError(res.error ?? "Verification failed.");
+    }
+  };
 
   return (
     <>
@@ -86,32 +121,34 @@ export default function TransferView({
 
             <div className="grid gap-2">
               <Label htmlFor="fromAccountId">From account</Label>
-              <NativeSelect
-                id="fromAccountId"
-                value={values.fromAccountId}
-                onChange={(e) => set({ fromAccountId: e.target.value })}
-              >
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} — {formatCurrency(a.available)} available
-                  </option>
-                ))}
-              </NativeSelect>
+              <Select value={values.fromAccountId} onValueChange={(v) => set({ fromAccountId: v })}>
+                <SelectTrigger id="fromAccountId">
+                  <SelectValue placeholder="Select an account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name} — {formatCurrency(a.available)} available
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="toPayeeId">To payee</Label>
-              <NativeSelect
-                id="toPayeeId"
-                value={values.toPayeeId}
-                onChange={(e) => set({ toPayeeId: e.target.value })}
-              >
-                {payees.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} · {p.bank} {p.accountMask}
-                  </option>
-                ))}
-              </NativeSelect>
+              <Select value={values.toPayeeId} onValueChange={(v) => set({ toPayeeId: v })}>
+                <SelectTrigger id="toPayeeId">
+                  <SelectValue placeholder="Select a payee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {payees.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} · {p.bank} {p.accountMask}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -138,19 +175,12 @@ export default function TransferView({
 
             <div className="grid gap-2">
               <Label>When</Label>
-              <div className="flex gap-2">
-                {(["now", "scheduled"] as const).map((w) => (
-                  <Button
-                    key={w}
-                    type="button"
-                    variant={values.when === w ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => set({ when: w })}
-                  >
-                    {w === "now" ? "Send now" : "Schedule for later"}
-                  </Button>
-                ))}
-              </div>
+              <Tabs value={values.when} onValueChange={(v) => set({ when: v as TransferValues["when"] })}>
+                <TabsList>
+                  <TabsTrigger value="now">Send now</TabsTrigger>
+                  <TabsTrigger value="scheduled">Schedule for later</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
 
             <Button disabled={!valid} onClick={() => setReviewing(true)} className="w-full">
@@ -179,34 +209,61 @@ export default function TransferView({
 
       <Dialog open={reviewing} onOpenChange={setReviewing}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm transfer</DialogTitle>
-            <DialogDescription>Double-check the details below.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 rounded-lg border p-4 text-sm">
-            <Row label="From" value={from?.name ?? ""} />
-            <Row label="To" value={`${payee?.name ?? ""} · ${payee?.accountMask ?? ""}`} />
-            <Row label="Reference" value={values.reference || "Transfer"} />
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-muted-foreground">Amount</span>
-              <Money cents={amountCents} className="text-lg font-semibold" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReviewing(false)}>
-              Back
-            </Button>
-            <Button
-              disabled={pending}
-              onClick={() => {
-                setReviewing(false);
-                onSubmit(values);
-              }}
-            >
-              {pending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-              Confirm &amp; send
-            </Button>
-          </DialogFooter>
+          {step === "review" ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Confirm transfer</DialogTitle>
+                <DialogDescription>Double-check the details below.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2 rounded-lg border p-4 text-sm">
+                <Row label="From" value={from?.name ?? ""} />
+                <Row label="To" value={`${payee?.name ?? ""} · ${payee?.accountMask ?? ""}`} />
+                <Row label="Reference" value={values.reference || "Transfer"} />
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-muted-foreground">Amount</span>
+                  <Money cents={amountCents} className="text-lg font-semibold" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setReviewing(false)}>
+                  Back
+                </Button>
+                <Button disabled={pending} onClick={() => setStep("verify")}>
+                  <Send className="size-4" />
+                  Confirm &amp; send
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Verify this transfer</DialogTitle>
+                <DialogDescription>
+                  Sending {formatCurrency(amountCents)} to {payee?.name ?? "your payee"} needs a code
+                  from your authenticator.
+                </DialogDescription>
+              </DialogHeader>
+              <TwoFactorChallenge
+                title="Authorize transfer"
+                description="Enter your 6-digit authenticator code to send this payment."
+                pending={verifying || pending}
+                error={verifyError}
+                onSubmit={handleVerify}
+              />
+              <DialogFooter>
+                <Button
+                  variant="ghost"
+                  disabled={verifying}
+                  onClick={() => {
+                    setStep("review");
+                    setVerifyError(null);
+                  }}
+                >
+                  Back to review
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>
@@ -254,25 +311,5 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="text-muted-foreground">{label}</span>
       <span className="truncate font-medium">{value}</span>
     </div>
-  );
-}
-
-// Native <select> instead of the Radix one: it renders and works identically on
-// the server (no `useId`, so nothing to mismatch under Modern.js streamed SSR).
-// Only classes that the host shell's Tailwind already emits are used here — a
-// federated remote's own utility classes aren't in the host stylesheet — so the
-// browser's default select chevron is kept rather than a custom-positioned one.
-function NativeSelect({
-  className,
-  ...props
-}: SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      className={cn(
-        "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-        className,
-      )}
-      {...props}
-    />
   );
 }

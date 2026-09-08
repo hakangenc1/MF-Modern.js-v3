@@ -1,6 +1,6 @@
 # Northwind Architecture
 
-> A working retail-banking front end split into **four independently deployed apps**,
+> A working retail-banking front end split into **five independently deployed apps**,
 > composed at request time with **Module Federation 2.0** and server-rendered as one
 > streamed HTML response.
 >
@@ -27,14 +27,13 @@ with styled diagrams.
 
 Northwind is a retail-banking dashboard — accounts, transfers, payees, cards, two-factor
 security — built as a **micro-frontend**. One host app (the *shell*) owns routing, the page
-chrome, auth, and data loading. Three *remote* apps each own one banking domain and expose
-their screens and their data functions as federated modules. The shell pulls those in at
-runtime and renders everything into a single server-streamed response.
+chrome, auth, and data loading. Three *domain* remotes own a banking area (`accounts`,
+`payments`, `security`); a fourth, `twofactor`, is a pure **widget provider** — its 2FA
+challenge/dialog/gate are dropped into the shell (login) and into `payments` (before a
+transfer), so one remote is consumed by two different hosts.
 
-Each of the four apps is a **standalone repository** — its own `package.json` with real
-version numbers, its own `node_modules`, its own git history, its own build and deploy.
-There is no monorepo and no workspace. `shell/` could live on a different machine in a
-different org and nothing would change except a URL. Shared UI is shadcn components
+Each of the five apps is a **standalone project** — its own `package.json` with real version
+numbers, its own `node_modules`, its own build and deploy. Shared UI is shadcn components
 *copied* into each app as source — it is not shipped as a federated module.
 
 The app also demonstrates the render boundary directly. Every authenticated page carries a
@@ -44,7 +43,7 @@ from the same federated data module.
 
 | | |
 |---|---|
-| **Apps** | `shell :3000` (host) · `accounts :3001` · `payments :3002` · `security :3003` |
+| **Apps** | `shell :3000` (host) · `accounts :3001` · `payments :3002` · `security :3003` · `twofactor :3004` |
 | **Composition** | Module Federation 2.0 — runtime remotes, shared React singletons, SSR-aware |
 | **Rendering** | `server.ssr.mode: "stream"` — the shell flushes first, then `<Suspense>` / `<Await>` content streams in behind skeletons |
 | **Data** | Per-app `src/mock/` — deterministic seeded banking data, an HMAC-signed session cookie, artificial latency so streaming is visible |
@@ -54,12 +53,12 @@ from the same federated data module.
 
 ## 02 · Architecture
 
-The shell declares the three remotes by their manifest URL. At render time it imports two
-kinds of thing from each remote: plain **async data functions** from `<remote>/data`, which
-it calls inside its route loaders, and **router-free view components**, which it renders
-with the resolved data. The remotes never touch routing or navigation — they use
-`<a href>` and GET forms — so the same component renders identically whether it is running
-standalone on its own port or federated into the shell's SSR stream.
+The shell declares the four remotes by their manifest URL. At render time it imports two
+kinds of thing from each: plain **async data functions** from `<remote>/data`, which it
+calls inside its route loaders, and **router-free view components**, which it renders with
+the resolved data. The remotes never touch routing or navigation — they use `<a href>` and
+GET forms — so a component renders identically standalone or federated into the shell's SSR
+stream. `payments` is itself a host for `twofactor`.
 
 ```mermaid
 flowchart LR
@@ -74,16 +73,17 @@ flowchart LR
         direction TB
         A["<b>accounts</b> · :3001<br/><small>./data ./AccountsView<br/>./AccountDetailView ./widgets</small>"]
         P["<b>payments</b> · :3002<br/><small>./data ./TransferView ./PayeesView<br/>./ActivityView ./QuickTransferCard</small>"]
-        SEC["<b>security</b> · :3003<br/><small>./data ./SecurityView ./TwoFactorView<br/>./DevicesView ./SessionsView<br/>./TwoFactorChallenge ./SecurityStatusCard</small>"]
+        SEC["<b>security</b> · :3003<br/><small>./data ./SecurityView ./TwoFactorView<br/>./DevicesView ./SessionsView ./SecurityStatusCard</small>"]
+        TF["<b>twofactor</b> · :3004<br/><small>./data ./TwoFactorChallenge<br/>./TwoFactorDialog ./TwoFactorGate</small>"]
     end
 
     SHARED["shared singletons<br/><b>react · react-dom</b>"]
 
     S -- "HTML + hydration" --> B
-    S -- "import ./data (in loaders)" --> A & P & SEC
-    S -- "import ./*View (render)" --> A & P & SEC
+    S -- "import ./data + ./*View" --> A & P & SEC & TF
+    P -- "import twofactor/TwoFactorChallenge" --> TF
     SHARED -.-> S
-    SHARED -.-> A & P & SEC
+    SHARED -.-> A & P & SEC & TF
 ```
 
 *The shell imports `./data` in its loaders and the `*View` components for rendering.
@@ -160,15 +160,16 @@ flowchart LR
 
 The remote returns data and markup — never a hook, a route, or a `<Link>`.
 
-| Remote | Exposes | Consumed by (shell route) |
+| Remote | Exposes | Consumed by |
 |---|---|---|
-| **accounts** `:3001` | `./data` — loadAccountsList, loadAccountDetail, loadDashboardWidgets<br>`./AccountsView` · `./AccountDetailView`<br>`./widgets` — CashflowCard, SpendingCard, RecentActivityCard | `/` (dashboard)<br>`/accounts`<br>`/accounts/:id`<br>`/insights` (client-side) |
-| **payments** `:3002` | `./data` — loadTransferContext, loadPayees, loadTransfers, submitTransfer<br>`./TransferView` · `./PayeesView` · `./ActivityView`<br>`./QuickTransferCard` | `/` (quick transfer)<br>`/payments`<br>`/payments/payees`<br>`/payments/activity` |
-| **security** `:3003` | `./data` — loadSecurityOverview, loadDevices, loadSessions, verifyCode, setTwoFactorEnabled<br>`./SecurityView` · `./TwoFactorView` · `./DevicesView` · `./SessionsView`<br>`./TwoFactorChallenge` · `./SecurityStatusCard` | `/` (status card)<br>`/login/verify` (2FA)<br>`/security` · `/security/two-factor`<br>`/security/devices` · `/security/sessions` |
+| **accounts** `:3001` | `./data` — loadAccountsList, loadAccountDetail, loadDashboardWidgets<br>`./AccountsView` · `./AccountDetailView`<br>`./widgets` — CashflowCard, SpendingCard, RecentActivityCard | shell: `/` (dashboard)<br>`/accounts`, `/accounts/:id`<br>`/insights` (client-side) |
+| **payments** `:3002` | `./data` — loadTransferContext, loadPayees, loadTransfers, submitTransfer<br>`./TransferView` · `./PayeesView` · `./ActivityView`<br>`./QuickTransferCard` | shell: `/` (quick transfer)<br>`/payments`, `/payments/payees`, `/payments/activity` |
+| **security** `:3003` | `./data` — loadSecurityOverview, loadDevices, loadSessions, setTwoFactorEnabled<br>`./SecurityView` · `./TwoFactorView` · `./DevicesView` · `./SessionsView`<br>`./SecurityStatusCard` | shell: `/` (status card)<br>`/security`, `/security/two-factor`<br>`/security/devices`, `/security/sessions` |
+| **twofactor** `:3004` | `./data` — verifyCode<br>`./TwoFactorChallenge` (inline OTP form)<br>`./TwoFactorDialog` (self-verifying popup)<br>`./TwoFactorGate` (wrap a button so it must pass 2FA) | **shell**: `/login/verify`<br>**payments**: the transfer confirm dialog |
 
 ### Version matrix — pinned in every app's `pnpm.overrides`
 
-The Module Federation stack is fragile across minor versions. All four apps pin the
+The Module Federation stack is fragile across minor versions. All five apps pin the
 identical set:
 
 | Package | Version |
@@ -193,7 +194,7 @@ action; `page.tsx` is the view.
 
 1. **Login** — any email + password. The action sets a short-lived `bank_2fa_pending`
    cookie and returns `{ next }` as JSON.
-2. **Verify** — the shell renders `security/TwoFactorChallenge` (a federated `input-otp`
+2. **Verify** — the shell renders `twofactor/TwoFactorChallenge` (a federated `input-otp`
    widget). Code `123456`. The action sets the HMAC-signed `bank_session` cookie.
 3. **Guarded** — `__app/layout.data.ts` verifies the cookie signature with `node:crypto`
    on every request and redirects to `/login` if it fails.
@@ -271,10 +272,10 @@ app's `packageManager` field. Everything is driven from the top folder, which ho
 orchestration scripts.
 
 ```bash
-# install all four apps
+# install all five apps
 npm run install:all
 
-# clears caches, boots the 3 remotes one by one, then the shell
+# clears caches, boots the 4 remotes one by one, then the shell
 npm run dev            # → http://localhost:3000
 
 # any email + password, then 2FA code 123456
@@ -283,7 +284,7 @@ npm run dev            # → http://localhost:3000
 | Command | Effect |
 |---|---|
 | `npm run install:all` | `pnpm install` in each app |
-| `npm run dev` | serial remote boot, then shell — aborts if :3000–:3003 are busy |
+| `npm run dev` | serial remote boot, then shell — aborts if :3000–:3004 are busy |
 | `npm run stop` | kill a lost dev run whose terminal is gone |
 | `npm run build` | `modern build` in each app |
 | `npm run start` | `modern serve` in each app (production) |
@@ -297,10 +298,10 @@ with its own routes, useful for building a domain in isolation.
 
 ## 08 · Deploy
 
-Four deployables, four pipelines. Each app is `install → build → serve` — a long-lived Node
-process (`modern serve`) behind a CDN. They find each other purely through environment
-variables: the shell needs each remote's public origin to build the manifest URLs; each
-remote needs its own public origin so its hashed chunks load from the right place.
+Five deployables, five pipelines. Each app is `install → build → deploy → run` — the prod
+server is `node .output/index` (from `modern deploy`), not `modern serve`. Apps find each
+other purely through environment variables. **The full runbook is [`DEPLOYMENT.md`](DEPLOYMENT.md)**;
+this is the shape.
 
 ```mermaid
 flowchart LR
@@ -310,34 +311,39 @@ flowchart LR
     AC["accounts · :3001"]
     PY["payments · :3002"]
     SC["security · :3003"]
+    TF["twofactor · :3004"]
 
     BR -->|"page request"| CDN
     CDN -->|"SSR page"| SHS
-    SHS -. "fetch manifest (server-to-server)" .-> AC & PY & SC
-    AC & PY & SC -. "publish hashed /static/ chunks" .-> CDN
+    SHS -. "fetch manifest (server-to-server)" .-> AC & PY & SC & TF
+    PY -. "fetch twofactor manifest" .-> TF
+    AC & PY & SC & TF -. "publish hashed /static/ chunks" .-> CDN
 ```
 
 *Solid = browser request path · dashed = server-to-server. The browser only ever talks to
-the shell (through the CDN). The shell's server resolves the three remote manifests
-server-to-server at render time.*
+the shell (through the CDN). The shell resolves the four remote manifests at render time;
+`payments` additionally resolves `twofactor`.*
 
 ### Environment
 
 | Variable | Set on | Value |
 |---|---|---|
-| `PORT` | all | listen port (defaults 3000–3003) |
+| `PORT` | all | listen port (defaults 3000–3004) |
 | `SHELL_ORIGIN` | shell | public base URL for the shell's own assets (or a CDN) |
-| `ACCOUNTS_ORIGIN` | shell + accounts | public URL of the accounts service — manifest on the shell, `assetPrefix` on the remote |
+| `ACCOUNTS_ORIGIN` | shell + accounts | public URL of the accounts service — manifest URL on the host, `assetPrefix` on the remote |
 | `PAYMENTS_ORIGIN` | shell + payments | … same for payments |
 | `SECURITY_ORIGIN` | shell + security | … same for security |
-| `SESSION_SECRET` | all | HMAC key for the session cookie — must match across apps |
+| `TWOFACTOR_ORIGIN` | **shell + payments** + twofactor | … same for twofactor — both the shell (login) and payments (transfer) consume it |
+| `SESSION_SECRET` | shell, accounts, security | HMAC key for the session cookie — must match |
+| `MODERN_MF_AUTO_CORS` | all | `true` — remotes send `Access-Control-Allow-Origin` for browser-side federation |
+| `MODERNJS_DEPLOY` | all | `node` — overrides Render's auto-injected `render` (unsupported by `modern deploy`) |
 
-### Container (recommended)
+### Container
 
-One image per app: `node:20-alpine`, `corepack enable`, `pnpm install --frozen-lockfile`,
-`pnpm build`, `CMD pnpm serve`. Deploy to Cloud Run, Fly.io, Render, Railway,
-AWS App Runner / ECS, or Azure Container Apps. Put Cloudflare or the platform CDN in front
-for TLS, compression, and `/static/` caching.
+One `node:20-alpine` image per app: `corepack enable`, `pnpm install --frozen-lockfile`,
+`pnpm run deploy`, then a runtime stage that copies `.output/` and runs
+`CMD ["node", ".output/index"]`. Deploy to Render, Cloud Run, Fly.io, Railway, ECS, or
+Container Apps. See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the Dockerfile.
 
 ### Serverless / platform
 

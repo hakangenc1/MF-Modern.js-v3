@@ -3,11 +3,15 @@ import { fileURLToPath } from "node:url";
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** Remotes first (host depends on them), then the shell. */
+/**
+ * Remotes first (hosts depend on them), then the shell. `twofactor` is listed
+ * before `payments` because payments composes the twofactor widget.
+ */
 export const APPS = [
   { name: "accounts", port: 3001, color: "\x1b[36m", remote: true },
-  { name: "payments", port: 3002, color: "\x1b[35m", remote: true },
   { name: "security", port: 3003, color: "\x1b[33m", remote: true },
+  { name: "twofactor", port: 3004, color: "\x1b[34m", remote: true },
+  { name: "payments", port: 3002, color: "\x1b[35m", remote: true },
   { name: "shell", port: 3000, color: "\x1b[32m", remote: false },
 ];
 

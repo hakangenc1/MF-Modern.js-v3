@@ -1,0 +1,219 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@source "./";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Self-hosted Inter — one 48 KB variable woff2 (Latin), bundled and hashed by
+ * Rspack, served from this origin. No third-party font connection. `swap`
+ * paints the system fallback immediately, then swaps with negligible shift.
+ * Regenerate src/assets/inter-latin-var.woff2 from @fontsource-variable/inter.
+ */
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("./assets/inter-latin-var.woff2") format("woff2-variations");
+}
+
+/*
+ * Northwind Bank design tokens. shadcn/ui token contract (Tailwind v4),
+ * themed for an enterprise banking product: cool neutrals + a deep
+ * indigo primary. Chart ramp is a calibrated categorical palette.
+ */
+:root {
+  --radius: 0.625rem;
+
+  --background: oklch(0.995 0.001 260);
+  --foreground: oklch(0.21 0.02 265);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.02 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.02 265);
+
+  --primary: oklch(0.47 0.13 264);
+  --primary-foreground: oklch(0.985 0.002 260);
+
+  --secondary: oklch(0.968 0.004 260);
+  --secondary-foreground: oklch(0.3 0.03 265);
+
+  --muted: oklch(0.968 0.004 260);
+  --muted-foreground: oklch(0.53 0.02 265);
+
+  --accent: oklch(0.958 0.012 258);
+  --accent-foreground: oklch(0.3 0.05 265);
+
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0.002 260);
+
+  --success: oklch(0.62 0.14 156);
+  --success-foreground: oklch(0.985 0.002 260);
+  --warning: oklch(0.75 0.15 75);
+  --warning-foreground: oklch(0.28 0.05 75);
+
+  /* Signed money: positive / negative amount ink (dataviz status ramp). */
+  --pos: #006300;
+  --neg: #d03b3b;
+
+  --border: oklch(0.918 0.005 260);
+  --input: oklch(0.918 0.005 260);
+  --ring: oklch(0.47 0.13 264);
+
+  /* Categorical chart ramp — validated dataviz default (light steps). */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+
+  --sidebar: oklch(0.985 0.003 260);
+  --sidebar-foreground: oklch(0.21 0.02 265);
+  --sidebar-primary: oklch(0.47 0.13 264);
+  --sidebar-primary-foreground: oklch(0.985 0.002 260);
+  --sidebar-accent: oklch(0.955 0.008 260);
+  --sidebar-accent-foreground: oklch(0.3 0.05 265);
+  --sidebar-border: oklch(0.912 0.006 260);
+  --sidebar-ring: oklch(0.47 0.13 264);
+}
+
+.dark {
+  --background: oklch(0.17 0.014 265);
+  --foreground: oklch(0.965 0.003 260);
+
+  --card: oklch(0.213 0.017 265);
+  --card-foreground: oklch(0.965 0.003 260);
+  --popover: oklch(0.213 0.017 265);
+  --popover-foreground: oklch(0.965 0.003 260);
+
+  --primary: oklch(0.7 0.12 262);
+  --primary-foreground: oklch(0.18 0.02 265);
+
+  --secondary: oklch(0.27 0.02 265);
+  --secondary-foreground: oklch(0.965 0.003 260);
+
+  --muted: oklch(0.27 0.02 265);
+  --muted-foreground: oklch(0.7 0.02 262);
+
+  --accent: oklch(0.31 0.03 264);
+  --accent-foreground: oklch(0.965 0.003 260);
+
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0.002 260);
+
+  --success: oklch(0.7 0.14 158);
+  --success-foreground: oklch(0.18 0.02 265);
+  --warning: oklch(0.8 0.14 78);
+  --warning-foreground: oklch(0.2 0.04 78);
+
+  --pos: #0ca30c;
+  --neg: #e66767;
+
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.7 0.12 262);
+
+  /* Categorical chart ramp — validated dataviz default (dark steps). */
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+
+  --sidebar: oklch(0.2 0.016 265);
+  --sidebar-foreground: oklch(0.965 0.003 260);
+  --sidebar-primary: oklch(0.7 0.12 262);
+  --sidebar-primary-foreground: oklch(0.18 0.02 265);
+  --sidebar-accent: oklch(0.27 0.02 265);
+  --sidebar-accent-foreground: oklch(0.965 0.003 260);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.7 0.12 262);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-pos: var(--pos);
+  --color-neg: var(--neg);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* "Inter Variable" is self-hosted (@fontsource-variable/inter, imported in the
+     root layout) — one latin woff2, no third-party connection. Mono uses the
+     platform monospace so there is no second font download. */
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas,
+    "Liberation Mono", Menlo, monospace;
+
+  /* `animate-caret-blink` for the input-otp fake caret. */
+  --animate-caret-blink: caret-blink 1.25s ease-out infinite;
+}
+
+@keyframes caret-blink {
+  0%,
+  70%,
+  100% {
+    opacity: 1;
+  }
+  20%,
+  50% {
+    opacity: 0;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Tabular figures for money everywhere it matters. */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
