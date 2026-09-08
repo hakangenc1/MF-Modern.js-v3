@@ -8,3 +8,11 @@ pnpm-lock.yaml text eol=lf
 *.ts text eol=lf
 *.json text eol=lf
 *.md text eol=lf
+
+# Deploy artifacts are consumed on Linux — must stay LF.
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf
+Caddyfile text eol=lf
+.dockerignore text eol=lf
