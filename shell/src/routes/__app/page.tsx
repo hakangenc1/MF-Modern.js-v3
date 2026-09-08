@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import {
   formatCurrency,
-  formatDate,
   formatPercent,
   type Account,
   type CashflowPoint,
@@ -39,6 +38,8 @@ import { SecurityStatusCard } from "security/SecurityStatusCard";
 
 interface DashboardData {
   firstName: string;
+  heading: string;
+  today: string;
   netWorth: NetWorth;
   accounts: Account[];
   payees: Payee[];
@@ -55,13 +56,8 @@ const ACCOUNT_ICON = {
   investment: TrendingUp,
 } as const;
 
-function greeting() {
-  const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-}
-
 export default function Dashboard() {
-  const { firstName, netWorth, accounts, payees, security, cashflow, spending, activity } =
+  const { heading, today, netWorth, accounts, payees, security, cashflow, spending, activity } =
     useLoaderData() as DashboardData;
 
   return (
@@ -70,8 +66,8 @@ export default function Dashboard() {
         <title>Overview · Northwind Bank</title>
       </Helmet>
       <PageHeader
-        title={`${greeting()}, ${firstName}`}
-        description={formatDate(new Date().toISOString(), "long")}
+        title={heading}
+        description={today}
         actions={
           <>
             <Button asChild variant="outline">
