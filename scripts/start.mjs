@@ -24,7 +24,7 @@ const ensureBuilt = (app) => {
     cwd: join(ROOT, app.name),
     stdio: "inherit",
     shell: true,
-    env: { ...process.env, ...PM_ENV, NODE_ENV: "production" },
+    env: { ...process.env, ...PM_ENV, NODE_ENV: "production", MODERN_MF_AUTO_CORS: "true" },
   });
   if (r.status !== 0) process.exit(r.status ?? 1);
 };
@@ -32,7 +32,16 @@ const ensureBuilt = (app) => {
 const run = (app) => {
   const child = spawn(process.execPath, [join(ROOT, app.name, ".output", "index.js")], {
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, NODE_ENV: "production", FORCE_COLOR: "1", PORT: String(app.port) },
+    env: {
+      ...process.env,
+      NODE_ENV: "production",
+      FORCE_COLOR: "1",
+      PORT: String(app.port),
+      // Let each remote answer the browser's cross-origin fetch for its
+      // mf-manifest.json / remoteEntry.js / chunks (client-side federation +
+      // SPA navigation). The plugin only adds the CORS header when this is set.
+      MODERN_MF_AUTO_CORS: "true",
+    },
   });
   const prefix = `${app.color}[${app.name}]${RESET} `;
   child.stdout.on("data", (d) => process.stdout.write(prefix + d));

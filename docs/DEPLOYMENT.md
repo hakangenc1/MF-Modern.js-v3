@@ -120,10 +120,15 @@ its own public URL (`assetPrefix`).
 | `PAYMENTS_ORIGIN` | ✓ | | ✓ | | …same, payments. |
 | `SECURITY_ORIGIN` | ✓ | | | ✓ | …same, security. |
 | `SESSION_SECRET` | ✓ | ✓ | | ✓ | HMAC key for the session cookie. **Must be identical** on shell, accounts, security. Generate 32+ random bytes. |
+| `MODERN_MF_AUTO_CORS` | ✓ | ✓ | ✓ | ✓ | Set to `true`. Makes each remote send `Access-Control-Allow-Origin: *` on its manifest / `remoteEntry.js` / chunks so the **browser** can fetch them cross-origin — required for client-side federation and SPA navigation. Without it every page load logs `blocked by CORS policy` and in-app navigation dies. |
 
 Every `*_ORIGIN` must be a full origin with scheme and **no trailing slash**:
 `https://northwind-accounts.onrender.com`. Without it a remote falls back to
 `http://localhost:<port>` and its assets 404 in production.
+
+`MODERN_MF_AUTO_CORS` matters on the three **remotes** (the shell is the origin doing the
+fetching, not the target) — but setting it everywhere is harmless, so the examples below
+just put it on all four.
 
 ---
 
@@ -146,8 +151,10 @@ npm run start
 ```
 
 `npm run start` runs each app's `.output/index.js` (and runs `modern deploy` first for any
-app that has no `.output/` yet). Open `http://localhost:3000`, sign in (any email +
-password, 2FA `123456`), and click through every menu.
+app that has no `.output/` yet, and sets `MODERN_MF_AUTO_CORS=true` for you). Open
+`http://localhost:3000`, sign in (any email + password, 2FA `123456`), and click through
+every menu — **watch the browser console**: it must stay clean. A `blocked by CORS policy`
+line on `…/static/mf-manifest.json` means `MODERN_MF_AUTO_CORS` didn't reach that remote.
 
 Verify SSR **including the federated regions** — view source on `/` and confirm the
 dashboard's federated widgets are in the HTML:
@@ -204,6 +211,7 @@ Create the **remotes first**, then the shell (the shell needs their URLs).
    built-in pnpm command.)
 4. **Start Command**: `node .output/index`
 5. **Environment** →
+   - `MODERN_MF_AUTO_CORS` = `true`
    - `SESSION_SECRET` — same value for accounts + security (payments doesn't need it, but
      setting it everywhere is harmless). Use Render's "Generate" once, then paste the same
      value into the others.
@@ -218,6 +226,7 @@ Create the **remotes first**, then the shell (the shell needs their URLs).
 1. **New → Web Service** → same repo → **Root Directory**: `shell`.
 2. Build / Start commands: identical to above.
 3. **Environment**:
+   - `MODERN_MF_AUTO_CORS` = `true`
    - `SESSION_SECRET` — the **same** value as accounts + security.
    - `ACCOUNTS_ORIGIN` = `https://northwind-accounts.onrender.com`
    - `PAYMENTS_ORIGIN` = `https://northwind-payments.onrender.com`
@@ -237,6 +246,8 @@ envVarGroups:
     envVars:
       - key: SESSION_SECRET
         generateValue: true          # one value, shared by every service below
+      - key: MODERN_MF_AUTO_CORS
+        value: "true"                # remotes send CORS headers for browser-side federation
 
 services:
   - type: web
@@ -319,6 +330,7 @@ RUN corepack pnpm run deploy          # → .output/ (self-contained server)
 FROM node:20-alpine AS run
 WORKDIR /app
 ENV NODE_ENV=production
+ENV MODERN_MF_AUTO_CORS=true
 COPY --from=build /app/.output ./.output
 EXPOSE 3000
 CMD ["node", ".output/index"]
@@ -346,6 +358,7 @@ docker run --rm -p 3001:3001 \
   -e PORT=3001 \
   -e SESSION_SECRET=dev-secret \
   -e ACCOUNTS_ORIGIN=http://localhost:3001 \
+  -e MODERN_MF_AUTO_CORS=true \
   northwind-accounts
 ```
 
@@ -359,19 +372,21 @@ Then push each image to your registry and deploy:
 `docker-compose.yml` at the repo root for a full local production stack:
 
 ```yaml
+x-mf: &mf { MODERN_MF_AUTO_CORS: "true", SESSION_SECRET: dev }
+
 services:
-  accounts: { build: ./accounts, environment: { PORT: 3001, ACCOUNTS_ORIGIN: "http://localhost:3001", SESSION_SECRET: dev }, ports: ["3001:3001"] }
-  payments: { build: ./payments, environment: { PORT: 3002, PAYMENTS_ORIGIN: "http://localhost:3002", SESSION_SECRET: dev }, ports: ["3002:3002"] }
-  security: { build: ./security, environment: { PORT: 3003, SECURITY_ORIGIN: "http://localhost:3003", SESSION_SECRET: dev }, ports: ["3003:3003"] }
+  accounts: { build: ./accounts, environment: { <<: *mf, PORT: 3001, ACCOUNTS_ORIGIN: "http://localhost:3001" }, ports: ["3001:3001"] }
+  payments: { build: ./payments, environment: { <<: *mf, PORT: 3002, PAYMENTS_ORIGIN: "http://localhost:3002" }, ports: ["3002:3002"] }
+  security: { build: ./security, environment: { <<: *mf, PORT: 3003, SECURITY_ORIGIN: "http://localhost:3003" }, ports: ["3003:3003"] }
   shell:
     build: ./shell
     environment:
+      <<: *mf
       PORT: 3000
       SHELL_ORIGIN: "http://localhost:3000"
       ACCOUNTS_ORIGIN: "http://localhost:3001"
       PAYMENTS_ORIGIN: "http://localhost:3002"
       SECURITY_ORIGIN: "http://localhost:3003"
-      SESSION_SECRET: dev
     ports: ["3000:3000"]
     depends_on: [accounts, payments, security]
 ```
@@ -406,6 +421,16 @@ plugin's middleware is broken); it's already in the repo.
 plugin, so federated regions fall back to client rendering there. That's a preview-tool
 limitation, not a deploy one. Use `node .output/index` / `npm run start`.
 
+### Client-side federation needs CORS
+
+After the SSR pass, the **browser** re-fetches each remote's `mf-manifest.json` and
+`remoteEntry.js` for hydration and SPA navigation — a cross-origin request
+(`shell` origin → `accounts` origin). The remote must answer with
+`Access-Control-Allow-Origin`. The plugin adds it only when **`MODERN_MF_AUTO_CORS=true`**
+is in the remote's environment ([§2](#environment-variables)). Without it, every page load
+logs `blocked by CORS policy` on `…/static/mf-manifest.json` and in-app navigation stops
+working — the SSR HTML still renders, so it looks like "SPA is broken" specifically.
+
 ---
 
 ## 8. Custom domains & CDN
@@ -419,6 +444,9 @@ limitation, not a deploy one. Use `node .output/index` / `npm run start`.
    personalised).
 4. TLS everywhere — mixed content breaks federation (the shell on HTTPS cannot pull a
    remote entry over HTTP).
+5. Keep `MODERN_MF_AUTO_CORS=true` on the remotes (it sends `Access-Control-Allow-Origin: *`
+   on the JS/JSON assets). If your CDN strips or overrides that header, add a rule to pass
+   it through for `*/static/*` and `*/bundles/*`.
 
 ---
 
@@ -484,13 +512,20 @@ it recovers on the next page load.
 |---|---|---|
 | Shell is up | `curl -I https://<shell>` | `200` |
 | Auth | Sign in, 2FA `123456` | lands on dashboard |
-| SSR (shell) | View source of `/cards` | real card data in HTML |
-| Federation wiring | DevTools Network on `/accounts` | `mf-manifest.json` + chunks load **from the accounts origin**, `200` |
+| SSR (federated) | View source of `/` | real widget markup (`Recent activity`, transaction rows) in HTML, not a skeleton |
+| **Browser console** | Open DevTools console, load `/`, click through 3–4 routes | **stays clean** — no `blocked by CORS policy`, no `Failed to get manifest #RUNTIME-003` |
+| SPA navigation | Click nav links | content swaps without a full reload; federated pages (`/accounts`, `/payments`) render |
+| Federation wiring | DevTools Network on `/accounts` | `mf-manifest.json` loads **from the accounts origin**, `200`, with an `access-control-allow-origin` response header |
 | Remote isolation | Stop the `payments` service, reload `/` | dashboard still renders; only the quick-transfer card degrades |
 | Session shared | Sign in on shell, hit `/security` | no re-login (same `SESSION_SECRET`) |
 
-If federation chunks 404: the remote's `*_ORIGIN` is wrong or has a trailing slash. If
-`/security` bounces you to login: `SESSION_SECRET` differs between services.
+Triage:
+
+- `blocked by CORS policy` / `RUNTIME-003` in the console, SSR HTML fine but SPA dead →
+  `MODERN_MF_AUTO_CORS` isn't set on that remote.
+- Federation chunks **404** → the remote's `*_ORIGIN` is wrong or has a trailing slash.
+- `Unexpected token '<'` / `'}'` server-side → the [§1b](#1b-the-federation-patch-already-applied--just-dont-drop-it) patch didn't apply (`pnpm install` in that app).
+- `/security` bounces to login → `SESSION_SECRET` differs between services.
 
 ---
 

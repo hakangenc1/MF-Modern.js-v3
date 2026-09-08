@@ -108,13 +108,18 @@ Every app pins the same Module Federation version matrix via `pnpm.overrides` in
 ## Known limitations
 
 - **Production** uses `modern deploy` → `node .output/index` per app (`npm run start`), not
-  `modern serve`. `modern deploy` wires `@module-federation/modern-js-v3`'s
-  `staticServePlugin`, so cross‑app **SSR federation works in production** — see
-  [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). The plugin's middleware has two bugs (a Windows
-  `path.join` and a byte‑vs‑string `Content-Length`); the fix is vendored as
-  `<app>/patches/@module-federation__modern-js-v3@2.8.2.patch` and applied by `pnpm install`.
-  The app‑level `serve` script (`modern serve`) is a quick preview only and does **not**
-  serve the SSR remote entry — federated regions fall back to CSR there.
+  `modern serve` — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Two things it needs:
+  - the vendored patch `<app>/patches/@module-federation__modern-js-v3@2.8.2.patch`
+    (applied by `pnpm install`) — fixes two bugs in the plugin's SSR static middleware (a
+    Windows `path.join`, and a byte‑vs‑string `Content-Length` that truncates chunks). With
+    it, `modern deploy` wires `staticServePlugin` and cross‑app **SSR federation works in
+    production**.
+  - **`MODERN_MF_AUTO_CORS=true`** in each remote's env (set automatically by
+    `npm run start`) — so the browser can fetch each remote's manifest cross‑origin for
+    client‑side federation + SPA navigation. Without it: `blocked by CORS policy` on every
+    load and in‑app navigation dies.
+  - `modern serve` (the app‑level `serve` script) is a quick preview only and does **not**
+    serve the SSR remote entry — federated regions fall back to CSR there.
 - Modern.js 3.5's client data layer doesn't follow redirects returned from route
   **actions** (only loaders); the auth actions return `{ next }` + `Set-Cookie` and the
   component navigates.
