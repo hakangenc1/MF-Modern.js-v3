@@ -121,6 +121,12 @@ Every app pins the same Module Federation version matrix via `pnpm.overrides` in
     load and in‑app navigation dies.
   - `modern serve` (the app‑level `serve` script) is a quick preview only and does **not**
     serve the SSR remote entry — federated regions fall back to CSR there.
+- **Federated‑view SSR is partial.** `/` and `/login/verify` server‑render their federated
+  content fully. `/payments`, `/security` and its sub‑routes throw a React #419/#421 during
+  streaming SSR (`Element type is invalid … undefined`) and **React client‑renders that
+  route's content instead** — the pages and every flow (including the transfer + 2FA) work,
+  but that content isn't in the first HTML and the errors show in the console. Appears to be
+  an ESM/CJS interop edge in `@module-federation/node` for this Modern.js version.
 - Modern.js 3.5's client data layer doesn't follow redirects returned from route
   **actions** (only loaders); the auth actions return `{ next }` + `Set-Cookie` and the
   component navigates.
