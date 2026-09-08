@@ -79,8 +79,10 @@ services:
 
   shell:
     build:
-      context: ../shell
-      dockerfile: ../deploy/Dockerfile
+      # context = repo root: shell/src/styles.css @source-scans the sibling
+      # remotes' src for their federated utility classes (see Dockerfile.shell).
+      context: ..
+      dockerfile: deploy/Dockerfile.shell
       args:
         SHELL_ORIGIN: "https://shell.${BASE_DOMAIN}"
         ACCOUNTS_ORIGIN: "https://accounts.${BASE_DOMAIN}"

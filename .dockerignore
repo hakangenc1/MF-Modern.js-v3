@@ -1,0 +1,12 @@
+# Used when the Docker build context is the repo root (deploy/Dockerfile.shell).
+# Per-app builds use each app's own .dockerignore.
+**/node_modules
+**/dist
+**/.output
+**/.modern-js
+**/*.log
+**/*.tsbuildinfo
+.git
+.github
+docs
+scratchpad

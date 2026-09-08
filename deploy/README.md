@@ -9,7 +9,8 @@ one always-on machine.
 
 | File | Purpose |
 |---|---|
-| `Dockerfile` | Shared multi-stage build; context is one app folder. `.output/` runtime image. |
+| `Dockerfile` | Shared build for the four remotes; context is that app's folder. |
+| `Dockerfile.shell` | Shell build; context is the **repo root** so Tailwind can `@source`-scan the remotes' src for their federated utility classes. |
 | `docker-compose.yml` | The five apps + `caddy`. Origins baked at build, re-passed at runtime. |
 | `Caddyfile` | Auto-HTTPS for `{shell,accounts,payments,security,twofactor}.$BASE_DOMAIN`. |
 | `.env.example` | `BASE_DOMAIN` + `SESSION_SECRET`. Copy to `.env` (gitignored). |
