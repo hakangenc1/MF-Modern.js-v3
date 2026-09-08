@@ -25,6 +25,8 @@ northwind-mfe/            ← this folder: only orchestration scripts, no code, 
   deploy topology. Renders on GitHub (Mermaid diagrams).
 - **[docs/architecture.html](docs/architecture.html)** — the same reference as a designed,
   single-file page; open it in a browser.
+- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** — step-by-step runbook: repo layout, hosts
+  (Render / Docker), env-var wiring, deploy order, smoke tests.
 - **[docs/PLAN.md](docs/PLAN.md)** — the original build plan and the dead ends that shaped
   the stack.
 
