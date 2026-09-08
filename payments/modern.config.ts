@@ -4,7 +4,7 @@ import { moduleFederationPlugin } from "@module-federation/modern-js-v3";
 const PORT = Number(process.env.PORT || 3002);
 // A remote's chunks must load from its own origin, so this has to be an absolute
 // URL in production (the service's public host or a CDN).
-const ASSET_PREFIX = process.env.PAYMENTS_ORIGIN ?? `http://localhost:${PORT}`;
+const ASSET_PREFIX = process.env.PAYMENTS_ORIGIN ?? process.env.RENDER_EXTERNAL_URL ?? `http://localhost:${PORT}`;
 
 export default defineConfig({
   server: {

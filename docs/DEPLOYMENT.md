@@ -130,6 +130,10 @@ Every `*_ORIGIN` must be a full origin with scheme and **no trailing slash**:
 fetching, not the target) — but setting it everywhere is harmless, so the examples below
 just put it on all four.
 
+Each config also falls back to `RENDER_EXTERNAL_URL` (which Render injects automatically) if
+its `*_ORIGIN` is unset — so on Render a **remote** needs no origin var of its own; only the
+**shell** needs the three remote URLs set explicitly.
+
 ---
 
 ## 3. Dry run locally in production mode

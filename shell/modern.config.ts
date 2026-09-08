@@ -4,7 +4,7 @@ import { moduleFederationPlugin } from "@module-federation/modern-js-v3";
 const PORT = Number(process.env.PORT || 3000);
 // Set SHELL_ORIGIN to a CDN/base URL in production so hashed assets are served
 // from there (see README → Deploy). Defaults to same-origin.
-const ASSET_PREFIX = process.env.SHELL_ORIGIN ?? "/";
+const ASSET_PREFIX = process.env.SHELL_ORIGIN ?? process.env.RENDER_EXTERNAL_URL ?? "/";
 
 // https://modernjs.dev/en/configure/app/usage
 export default defineConfig({
