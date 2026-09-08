@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useFetcher } from "@modern-js/runtime/router";
 import { RotateCcw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -8,11 +9,18 @@ import {
   type Entitlement,
 } from "@/lib/entitlements";
 
+const sameSet = (a: Set<string>, b: Set<string>) =>
+  a.size === b.size && [...a].every((x) => b.has(x));
+
 /**
  * The entitlement switches. Used in the top-bar popover and on the Settings
  * page. Every change POSTs the full list to the `/entitlements` resource route;
  * React Router then revalidates the app layout loader so the shell + every
  * federated view re-render with the new grants.
+ *
+ * Local optimistic state (not `fetcher.formData`) is the source of truth while
+ * writes are in flight, so toggling several switches quickly chains correctly
+ * instead of racing the server round-trips.
  */
 export function EntitlementToggles({
   current,
@@ -24,15 +32,19 @@ export function EntitlementToggles({
   personaDefaults: Entitlement[];
 }) {
   const fetcher = useFetcher();
+  const [optimistic, setOptimistic] = useState<Set<string> | null>(null);
+  const active = optimistic ?? new Set<string>(current);
 
-  // Optimistic: reflect the in-flight submission immediately.
-  const pendingValue = fetcher.formData?.get("value");
-  const active =
-    typeof pendingValue === "string"
-      ? new Set(pendingValue.split(",").filter(Boolean))
-      : new Set(current);
+  // Drop the optimistic layer once the revalidated loader agrees.
+  const currentKey = [...current].sort().join(",");
+  useEffect(() => {
+    if (optimistic && sameSet(optimistic, new Set(currentKey.split(",").filter(Boolean)))) {
+      setOptimistic(null);
+    }
+  }, [currentKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const commit = (next: Set<string>) => {
+    setOptimistic(next);
     const value = ALL_ENTITLEMENTS.filter((e) => next.has(e)).join(",");
     fetcher.submit({ value }, { method: "post", action: "/entitlements" });
   };
@@ -44,8 +56,7 @@ export function EntitlementToggles({
     commit(next);
   };
 
-  const isDefault =
-    active.size === personaDefaults.length && personaDefaults.every((e) => active.has(e));
+  const isDefault = sameSet(active, new Set(personaDefaults));
 
   return (
     <div className="space-y-3">

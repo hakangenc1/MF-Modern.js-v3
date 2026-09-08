@@ -1,12 +1,13 @@
+import { redirect } from "@modern-js/runtime/router";
 import { clearedEntitlementsCookie, clearedSessionCookie } from "@/mock/session";
 
 function bounce() {
-  // Loaders (unlike actions) keep multiple Set-Cookie headers, so clear both the
-  // session and the entitlement override here.
-  const headers = new Headers({ Location: "/login" });
+  // Loaders keep multiple Set-Cookie headers (unlike actions). Clear the session
+  // and the entitlement override so the next persona starts from its defaults.
+  const headers = new Headers();
   headers.append("Set-Cookie", clearedSessionCookie());
   headers.append("Set-Cookie", clearedEntitlementsCookie());
-  return new Response(null, { status: 302, headers });
+  return redirect("/login", { headers });
 }
 
 export const loader = bounce;
