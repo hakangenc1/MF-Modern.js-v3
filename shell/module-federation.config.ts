@@ -6,6 +6,8 @@ const origin = (name: string, fallbackPort: number) =>
 export default createModuleFederationConfig({
   name: "shell",
   dts: false,
+  // Keeps a cold / briefly-unreachable remote from crashing the SSR host process.
+  runtimePlugins: ["./src/mf-runtime-plugin.ts"],
   remotes: {
     accounts: `accounts@${origin("accounts", 3001)}/static/mf-manifest.json`,
     payments: `payments@${origin("payments", 3002)}/static/mf-manifest.json`,
