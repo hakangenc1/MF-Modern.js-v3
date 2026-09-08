@@ -1,5 +1,14 @@
-import { formatDate, type CashflowPoint, type SpendingSlice, type Transaction } from "@/mock";
+import {
+  formatCurrency,
+  formatDate,
+  type BudgetProgress,
+  type CashflowPoint,
+  type SavingsGoal,
+  type SpendingSlice,
+  type Transaction,
+} from "@/mock";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Money, SectionCard } from "@/components/patterns/kit";
 import { CashflowChart, SpendingBars } from "@/components/patterns/charts";
 
@@ -20,6 +29,67 @@ export function SpendingCard({ data }: { data: { slices: SpendingSlice[]; total:
   return (
     <SectionCard title="Spending by category" description="Last 30 days">
       <SpendingBars data={data.slices} />
+    </SectionCard>
+  );
+}
+
+export function BudgetSummaryCard({
+  rows,
+  totalLimit,
+  totalSpent,
+}: {
+  rows: BudgetProgress[];
+  totalLimit: number;
+  totalSpent: number;
+}) {
+  const pct = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0;
+  const top = [...rows].sort((a, b) => b.pct - a.pct).slice(0, 3);
+  return (
+    <SectionCard
+      title="Budgets"
+      description="This month"
+      action={
+        <Button asChild variant="ghost" size="sm">
+          <a href="/budgets">Manage</a>
+        </Button>
+      }
+      bodyClassName="space-y-3"
+    >
+      <div className="flex items-baseline justify-between">
+        <span className="text-2xl font-semibold tabular-nums">{formatCurrency(totalSpent)}</span>
+        <span className="text-sm text-muted-foreground">of {formatCurrency(totalLimit)}</span>
+      </div>
+      <Progress value={Math.min(100, pct)} />
+      <ul className="space-y-1.5 text-sm">
+        {top.map((r) => (
+          <li key={r.category} className="flex items-center justify-between">
+            <span className="text-muted-foreground">{r.category}</span>
+            <span
+              className="tabular-nums"
+              style={{ color: r.spent > r.monthlyLimit ? "var(--neg)" : undefined }}
+            >
+              {r.pct}%
+            </span>
+          </li>
+        ))}
+      </ul>
+    </SectionCard>
+  );
+}
+
+export function SavingsGoalCard({ goal }: { goal: SavingsGoal }) {
+  const pct = Math.round((goal.saved / goal.target) * 100);
+  return (
+    <SectionCard title="Savings goal" description={goal.name} bodyClassName="space-y-2">
+      <div className="flex items-baseline justify-between">
+        <span className="text-2xl font-semibold tabular-nums">{formatCurrency(goal.saved)}</span>
+        <span className="text-sm text-muted-foreground">of {formatCurrency(goal.target)}</span>
+      </div>
+      <Progress value={pct} />
+      <p className="text-xs text-muted-foreground">{pct}% funded · target {goal.targetDate}</p>
+      <Button asChild variant="outline" size="sm" className="w-full">
+        <a href="/budgets">Add to goal</a>
+      </Button>
     </SectionCard>
   );
 }

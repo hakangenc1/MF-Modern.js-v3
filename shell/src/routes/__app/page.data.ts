@@ -1,7 +1,12 @@
 import { defer, type LoaderFunctionArgs } from "@modern-js/runtime/router";
 import { getSession } from "@/mock/session";
 import { formatDate } from "@/mock/format";
-import { loadAccountsList, loadDashboardWidgets } from "accounts/data";
+import {
+  loadAccountsList,
+  loadBudgetProgress,
+  loadDashboardWidgets,
+  loadSavingsGoals,
+} from "accounts/data";
 import { loadPayees } from "payments/data";
 import { loadSecurityOverview } from "security/data";
 
@@ -16,10 +21,12 @@ function greeting(d: Date) {
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const session = getSession(request);
-  const [{ accounts, netWorth }, payees, security] = await Promise.all([
+  const [{ accounts, netWorth }, payees, security, budget, goals] = await Promise.all([
     loadAccountsList(),
     loadPayees(),
     loadSecurityOverview(),
+    loadBudgetProgress(),
+    loadSavingsGoals(),
   ]);
   const widgets = loadDashboardWidgets();
   const now = new Date();
@@ -32,6 +39,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     netWorth,
     payees,
     security,
+    budget,
+    goal: goals[0] ?? null,
     // Streamed — flushed after the shell as each resolves.
     cashflow: widgets.cashflow,
     spending: widgets.spending,

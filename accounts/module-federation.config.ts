@@ -8,6 +8,9 @@ export default createModuleFederationConfig({
   exposes: {
     "./AccountsView": "./src/federation/AccountsView.tsx",
     "./AccountDetailView": "./src/federation/AccountDetailView.tsx",
+    "./BudgetsView": "./src/federation/BudgetsView.tsx",
+    "./StatementsView": "./src/federation/StatementsView.tsx",
+    "./TransactionDetail": "./src/federation/TransactionDetail.tsx",
     "./widgets": "./src/federation/widgets.tsx",
     "./data": "./src/federation/data.ts",
   },

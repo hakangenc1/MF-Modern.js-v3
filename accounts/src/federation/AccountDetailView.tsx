@@ -1,4 +1,4 @@
-import { ArrowLeft, Loader2, Search } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, Loader2, Search } from "lucide-react";
 import {
   formatCurrency,
   formatDate,
@@ -30,6 +30,8 @@ import {
 import { Money } from "@/components/patterns/kit";
 import { BalanceSparkline } from "@/components/patterns/charts";
 
+type SortKey = "date" | "amount" | "merchant";
+
 const CATEGORIES: (TransactionCategory | "all")[] = [
   "all",
   "Income",
@@ -45,39 +47,49 @@ const CATEGORIES: (TransactionCategory | "all")[] = [
   "Fees",
 ];
 
+function buildHref(
+  base: string,
+  parts: { category?: string; search?: string; sort?: string; dir?: string; txn?: string; cursor?: string },
+) {
+  const p = new URLSearchParams();
+  if (parts.category && parts.category !== "all") p.set("category", parts.category);
+  if (parts.search) p.set("q", parts.search);
+  if (parts.sort && parts.sort !== "date") p.set("sort", parts.sort);
+  if (parts.dir && parts.dir !== "desc") p.set("dir", parts.dir);
+  if (parts.cursor) p.set("cursor", parts.cursor);
+  if (parts.txn) p.set("txn", parts.txn);
+  const qs = p.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
 /**
  * Account detail — presentational and router-free. The shell (which owns
  * routing) drives navigation via the plain links / GET form here, and streams
  * the transaction table into `children`.
- *
- * `pendingHref` is the URL the shell's router is currently navigating to — a
- * filter control spins on *itself* when it matches, and the results area dims,
- * with no page-wide loading treatment.
  */
 export default function AccountDetailView({
   account,
   category,
   search,
+  sort = "date",
+  dir = "desc",
   pendingHref,
   children,
 }: {
   account: Account;
   category: string;
   search: string;
+  sort?: SortKey;
+  dir?: "asc" | "desc";
   pendingHref?: string | null;
   children: React.ReactNode;
 }) {
   const isCredit = account.type === "credit";
   const base = `/accounts/${account.id}`;
-  const hrefFor = (cat: string) => {
-    const p = new URLSearchParams();
-    if (cat && cat !== "all") p.set("category", cat);
-    if (search) p.set("q", search);
-    const qs = p.toString();
-    return qs ? `${base}?${qs}` : base;
-  };
-  const filtering = !!pendingHref && pendingHref.startsWith(base);
-  const searchPending = filtering && pendingHref.includes("q=") !== !!search;
+  const catHref = (c: string) => buildHref(base, { category: c, search, sort, dir });
+  const filtering = !!pendingHref && pendingHref.startsWith(base) && !pendingHref.includes("txn=");
+  const searchPending =
+    filtering && pendingHref.includes("q=") !== !!search;
 
   return (
     <>
@@ -92,7 +104,7 @@ export default function AccountDetailView({
           <CardHeader>
             <div className="flex items-start justify-between">
               <div>
-                <CardTitle className="text-lg">{account.name}</CardTitle>
+                <CardTitle className="text-lg">{account.nickname || account.name}</CardTitle>
                 <CardDescription className="font-mono">{account.mask}</CardDescription>
               </div>
               <Badge variant="outline" className="uppercase">
@@ -139,7 +151,9 @@ export default function AccountDetailView({
                 />
               ) : null}
             </div>
-            <BalanceSparkline history={account.history} />
+            <div className="text-muted-foreground">
+              <BalanceSparkline history={account.history} height={44} />
+            </div>
           </CardContent>
         </Card>
 
@@ -148,7 +162,7 @@ export default function AccountDetailView({
             <CardTitle className="text-base">Account details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <Row label="Account name" value={account.name} />
+            <Row label="Account name" value={account.nickname || account.name} />
             <Row label="Type" value={account.type} />
             <Row label="Opened" value={formatDate(account.openedAt, "long")} />
             <Row label="Currency" value={account.currency} />
@@ -161,7 +175,7 @@ export default function AccountDetailView({
         <CardHeader className="gap-4">
           <div>
             <CardTitle className="text-base">Transactions</CardTitle>
-            <CardDescription>Filter by category or search a merchant</CardDescription>
+            <CardDescription>Filter by category, search a merchant, or sort a column</CardDescription>
           </div>
           <form method="get" action={base} className="relative max-w-xs">
             {searchPending ? (
@@ -172,6 +186,8 @@ export default function AccountDetailView({
             {category && category !== "all" ? (
               <input type="hidden" name="category" value={category} />
             ) : null}
+            {sort !== "date" ? <input type="hidden" name="sort" value={sort} /> : null}
+            {dir !== "desc" ? <input type="hidden" name="dir" value={dir} /> : null}
             <Input
               name="q"
               defaultValue={search}
@@ -181,10 +197,10 @@ export default function AccountDetailView({
           </form>
           <div className="flex flex-wrap gap-1.5">
             {CATEGORIES.map((c) => {
-              const active = category === c || (c === "all" && category === "all");
-              const pending = hrefFor(c) === pendingHref;
+              const active = category === c;
+              const pending = catHref(c) === pendingHref;
               return (
-                <a key={c} href={hrefFor(c)} aria-disabled={pending || undefined}>
+                <a key={c} href={catHref(c)} aria-disabled={pending || undefined}>
                   <Badge
                     variant={active ? "default" : "outline"}
                     className="cursor-pointer gap-1"
@@ -216,14 +232,24 @@ export function TransactionsTable({
   base,
   category,
   search,
+  sort = "date",
+  dir = "desc",
   pendingHref,
 }: {
   page: Page<Transaction>;
   base: string;
   category: string;
   search: string;
+  sort?: SortKey;
+  dir?: "asc" | "desc";
   pendingHref?: string | null;
 }) {
+  const sortHref = (key: SortKey) => {
+    const nextDir = sort === key && dir === "desc" ? "asc" : "desc";
+    return buildHref(base, { category, search, sort: key, dir: nextDir });
+  };
+  const rowHref = (id: string) => buildHref(base, { category, search, sort, dir, txn: id });
+
   if (!page.items.length) {
     return (
       <p className="py-10 text-center text-sm text-muted-foreground">
@@ -231,11 +257,13 @@ export function TransactionsTable({
       </p>
     );
   }
-  const more = new URLSearchParams();
-  if (category && category !== "all") more.set("category", category);
-  if (search) more.set("q", search);
-  if (page.nextCursor) more.set("cursor", page.nextCursor);
-  const moreHref = `${base}?${more}`;
+  const moreHref = buildHref(base, {
+    category,
+    search,
+    sort,
+    dir,
+    cursor: page.nextCursor ?? undefined,
+  });
   const morePending = moreHref === pendingHref;
 
   return (
@@ -243,22 +271,33 @@ export function TransactionsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Merchant</TableHead>
+            <TableHead>
+              <SortLink label="Merchant" active={sort === "merchant"} dir={dir} href={sortHref("merchant")} pending={sortHref("merchant") === pendingHref} />
+            </TableHead>
             <TableHead>Category</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead className="text-right">Amount</TableHead>
+            <TableHead>
+              <SortLink label="Date" active={sort === "date"} dir={dir} href={sortHref("date")} pending={sortHref("date") === pendingHref} />
+            </TableHead>
+            <TableHead className="text-right">
+              <SortLink label="Amount" active={sort === "amount"} dir={dir} href={sortHref("amount")} pending={sortHref("amount") === pendingHref} align="right" />
+            </TableHead>
             <TableHead className="text-right">Balance</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {page.items.map((t) => (
-            <TableRow key={t.id}>
+            <TableRow key={t.id} className="cursor-pointer">
               <TableCell className="font-medium">
-                {t.merchant}
+                <a href={rowHref(t.id)} className="block hover:underline">
+                  {t.merchant}
+                </a>
                 {t.status === "pending" ? (
                   <Badge variant="outline" className="ml-2 text-[10px]">
                     Pending
                   </Badge>
+                ) : null}
+                {t.note ? (
+                  <span className="ml-2 text-[11px] text-muted-foreground">· note</span>
                 ) : null}
               </TableCell>
               <TableCell className="text-muted-foreground">{t.category}</TableCell>
@@ -287,6 +326,44 @@ export function TransactionsTable({
         ) : null}
       </div>
     </>
+  );
+}
+
+function SortLink({
+  label,
+  href,
+  active,
+  dir,
+  pending,
+  align,
+}: {
+  label: string;
+  href: string;
+  active: boolean;
+  dir: "asc" | "desc";
+  pending: boolean;
+  align?: "right";
+}) {
+  return (
+    <a
+      href={href}
+      className={cn(
+        "inline-flex items-center gap-1 hover:text-foreground",
+        align === "right" && "flex-row-reverse",
+        active ? "text-foreground" : "text-muted-foreground",
+      )}
+    >
+      {label}
+      {pending ? (
+        <Loader2 className="size-3 animate-spin" />
+      ) : active ? (
+        dir === "desc" ? (
+          <ArrowDown className="size-3" />
+        ) : (
+          <ArrowUp className="size-3" />
+        )
+      ) : null}
+    </a>
   );
 }
 

@@ -1,30 +1,44 @@
 import { delay, LATENCY } from "./delay";
 import {
   ACCOUNTS,
+  BUDGETS,
   CARDS,
   CASHFLOW,
   DEMO_2FA_CODE,
   DEVICES,
+  NOTIFICATIONS,
   NOW,
   PAYEES,
+  PROFILE,
+  RECURRING,
+  SAVINGS_GOALS,
   SECURITY,
   SESSIONS,
   SPENDING_BY_CATEGORY,
+  STATEMENTS,
   TRANSACTIONS,
   TRANSFERS,
   USER,
 } from "./seed";
 import type {
   Account,
+  Budget,
+  BudgetProgress,
   Card,
   CashflowPoint,
   Device,
+  NotificationItem,
   Page,
   Payee,
+  Profile,
+  RecurringRule,
+  SavingsGoal,
   SecurityOverview,
   SessionEntry,
   SpendingSlice,
+  Statement,
   Transaction,
+  TransactionCategory,
   Transfer,
   User,
 } from "./types";
@@ -89,12 +103,16 @@ export async function getNetWorth(): Promise<NetWorth> {
 
 const PAGE_SIZE = 12;
 
+export type TransactionSort = "date" | "amount" | "merchant";
+
 export interface TransactionQuery {
   accountId?: string;
   cursor?: string | null;
   category?: string;
   search?: string;
   limit?: number;
+  sort?: TransactionSort;
+  dir?: "asc" | "desc";
 }
 
 export async function getTransactions(query: TransactionQuery = {}): Promise<Page<Transaction>> {
@@ -109,6 +127,15 @@ export async function getTransactions(query: TransactionQuery = {}): Promise<Pag
     rows = rows.filter(
       (t) => t.merchant.toLowerCase().includes(q) || t.category.toLowerCase().includes(q),
     );
+  }
+  if (query.sort) {
+    const dir = query.dir === "asc" ? 1 : -1;
+    const cmp: Record<TransactionSort, (a: Transaction, b: Transaction) => number> = {
+      date: (a, b) => (+new Date(a.date) - +new Date(b.date)) * dir,
+      amount: (a, b) => (a.amount - b.amount) * dir,
+      merchant: (a, b) => a.merchant.localeCompare(b.merchant) * dir,
+    };
+    rows = [...rows].sort(cmp[query.sort]);
   }
   const start = query.cursor ? Number(query.cursor) : 0;
   const slice = rows.slice(start, start + limit);
@@ -141,17 +168,23 @@ export async function getCashflow(): Promise<CashflowPoint[]> {
 /* ---------------------------------------------------------------- payments */
 
 const transfers: Transfer[] = clone(TRANSFERS);
+// Mutable payee book (create / update / delete operate on this).
+const payees: Payee[] = clone(PAYEES);
+
+function sortPayees(list: Payee[]): Payee[] {
+  return [...list].sort(
+    (a, b) => Number(b.favorite) - Number(a.favorite) || a.name.localeCompare(b.name),
+  );
+}
 
 export async function getPayees(): Promise<Payee[]> {
   await delay(LATENCY.normal);
-  return clone(
-    [...PAYEES].sort((a, b) => Number(b.favorite) - Number(a.favorite) || a.name.localeCompare(b.name)),
-  );
+  return clone(sortPayees(payees));
 }
 
 export async function getPayee(id: string): Promise<Payee | null> {
   await delay(LATENCY.fast);
-  return clone(PAYEES.find((p) => p.id === id) ?? null);
+  return clone(payees.find((p) => p.id === id) ?? null);
 }
 
 export async function getTransfers(): Promise<{ scheduled: Transfer[]; history: Transfer[] }> {
@@ -266,10 +299,321 @@ export async function getCards(): Promise<Card[]> {
   return clone(cards);
 }
 
-export async function setCardFrozen(id: string, frozen: boolean): Promise<Card | null> {
+export async function setCardFrozen(
+  id: string,
+  frozen: boolean,
+  reason?: string,
+): Promise<Card | null> {
   await delay(LATENCY.fast);
   const card = cards.find((c) => c.id === id);
   if (!card) return null;
   card.frozen = frozen;
+  card.freezeReason = frozen ? reason || "Frozen by you" : undefined;
   return clone(card);
+}
+
+export async function setCardLimit(id: string, limitCents: number): Promise<Card | null> {
+  await delay(LATENCY.fast);
+  const card = cards.find((c) => c.id === id);
+  if (!card) return null;
+  card.monthlyLimit = Math.max(0, Math.round(limitCents));
+  return clone(card);
+}
+
+export async function toggleCategoryLock(
+  id: string,
+  category: TransactionCategory,
+): Promise<Card | null> {
+  await delay(LATENCY.fast);
+  const card = cards.find((c) => c.id === id);
+  if (!card) return null;
+  card.categoryLocks = card.categoryLocks.includes(category)
+    ? card.categoryLocks.filter((c) => c !== category)
+    : [...card.categoryLocks, category];
+  return clone(card);
+}
+
+export async function addVirtualCard(id: string, label: string): Promise<Card | null> {
+  await delay(LATENCY.normal);
+  const card = cards.find((c) => c.id === id);
+  if (!card) return null;
+  const n = Math.floor(1000 + Math.random() * 9000);
+  card.virtualCards = [
+    ...card.virtualCards,
+    {
+      id: `vc_${Date.now()}`,
+      label: label.trim() || "Virtual card",
+      mask: `•••• ${n}`,
+      createdAt: NOW.toISOString(),
+    },
+  ];
+  return clone(card);
+}
+
+export async function deleteVirtualCard(id: string, vid: string): Promise<Card | null> {
+  await delay(LATENCY.fast);
+  const card = cards.find((c) => c.id === id);
+  if (!card) return null;
+  card.virtualCards = card.virtualCards.filter((v) => v.id !== vid);
+  return clone(card);
+}
+
+export async function replaceCard(id: string): Promise<Card | null> {
+  await delay(LATENCY.slow);
+  const card = cards.find((c) => c.id === id);
+  if (!card) return null;
+  const n = Math.floor(1000 + Math.random() * 9000);
+  card.mask = `•••• ${n}`;
+  card.frozen = false;
+  card.freezeReason = undefined;
+  card.replacedAt = NOW.toISOString();
+  return clone(card);
+}
+
+/* ---------------------------------------------------------------- statements */
+
+export async function getStatements(accountId?: string): Promise<Statement[]> {
+  await delay(LATENCY.normal);
+  const rows = accountId
+    ? STATEMENTS.filter((s) => s.accountId === accountId)
+    : STATEMENTS;
+  return clone(rows);
+}
+
+export async function getStatement(id: string): Promise<Statement | null> {
+  await delay(LATENCY.fast);
+  return clone(STATEMENTS.find((s) => s.id === id) ?? null);
+}
+
+/* ------------------------------------------------------- transaction detail */
+
+export async function getTransaction(id: string): Promise<Transaction | null> {
+  await delay(LATENCY.fast);
+  return clone(TRANSACTIONS.find((t) => t.id === id) ?? null);
+}
+
+export async function setTransactionCategory(
+  id: string,
+  category: TransactionCategory,
+): Promise<Transaction | null> {
+  await delay(LATENCY.fast);
+  const t = TRANSACTIONS.find((x) => x.id === id);
+  if (!t) return null;
+  t.category = category;
+  return clone(t);
+}
+
+export async function setTransactionNote(id: string, note: string): Promise<Transaction | null> {
+  await delay(LATENCY.fast);
+  const t = TRANSACTIONS.find((x) => x.id === id);
+  if (!t) return null;
+  t.note = note.trim() || undefined;
+  return clone(t);
+}
+
+/* -------------------------------------------------------- recurring rules */
+
+const recurring: RecurringRule[] = clone(RECURRING);
+
+export async function getRecurringRules(): Promise<RecurringRule[]> {
+  await delay(LATENCY.normal);
+  return clone(recurring);
+}
+
+export async function setRecurringActive(id: string, active: boolean): Promise<RecurringRule[]> {
+  await delay(LATENCY.fast);
+  const rule = recurring.find((r) => r.id === id);
+  if (rule) rule.active = active;
+  return clone(recurring);
+}
+
+export async function cancelTransfer(id: string): Promise<Transfer[]> {
+  await delay(LATENCY.fast);
+  const t = transfers.find((x) => x.id === id);
+  if (t && (t.status === "scheduled" || t.status === "processing")) t.status = "failed";
+  const sorted = [...transfers].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+  return clone(sorted);
+}
+
+/* ------------------------------------------------- internal (own-account) move */
+
+export interface InternalTransferInput {
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number; // cents
+  reference?: string;
+}
+
+export async function createInternalTransfer(
+  input: InternalTransferInput,
+): Promise<TransferResult> {
+  await delay(LATENCY.slow);
+  const from = ACCOUNTS.find((a) => a.id === input.fromAccountId);
+  const to = ACCOUNTS.find((a) => a.id === input.toAccountId);
+  if (!from || !to) return { ok: false, error: "Account not found." };
+  if (from.id === to.id) return { ok: false, error: "Choose two different accounts." };
+  if (input.amount <= 0) return { ok: false, error: "Enter an amount greater than zero." };
+  if (input.amount > from.available)
+    return { ok: false, error: "This transfer exceeds your available balance." };
+
+  const transfer: Transfer = {
+    id: `trf_${Math.floor(NOW.getTime() / 1000) + transfers.length}`,
+    fromAccountId: from.id,
+    toPayeeId: to.id,
+    toName: to.name,
+    amount: input.amount,
+    currency: "USD",
+    reference: input.reference?.trim() || "Transfer between accounts",
+    status: "completed",
+    createdAt: NOW.toISOString(),
+    executeAt: NOW.toISOString(),
+    kind: "internal",
+  };
+  transfers.unshift(transfer);
+  return { ok: true, transfer };
+}
+
+/* ---------------------------------------------------------- payee management */
+
+export interface PayeeInput {
+  name: string;
+  bank: string;
+  accountMask: string;
+  reference?: string;
+}
+
+export async function createPayee(input: PayeeInput): Promise<Payee[]> {
+  await delay(LATENCY.normal);
+  payees.push({
+    id: `pay_${Date.now()}`,
+    name: input.name.trim(),
+    bank: input.bank.trim(),
+    accountMask: input.accountMask.trim(),
+    reference: input.reference?.trim() || undefined,
+    favorite: false,
+  });
+  return clone(sortPayees(payees));
+}
+
+export async function updatePayee(id: string, input: Partial<PayeeInput & { favorite: boolean }>): Promise<Payee[]> {
+  await delay(LATENCY.fast);
+  const p = payees.find((x) => x.id === id);
+  if (p) {
+    if (input.name !== undefined) p.name = input.name.trim();
+    if (input.bank !== undefined) p.bank = input.bank.trim();
+    if (input.accountMask !== undefined) p.accountMask = input.accountMask.trim();
+    if (input.reference !== undefined) p.reference = input.reference.trim() || undefined;
+    if (input.favorite !== undefined) p.favorite = input.favorite;
+  }
+  return clone(sortPayees(payees));
+}
+
+export async function deletePayee(id: string): Promise<Payee[]> {
+  await delay(LATENCY.fast);
+  const i = payees.findIndex((x) => x.id === id);
+  if (i >= 0) payees.splice(i, 1);
+  return clone(sortPayees(payees));
+}
+
+/* ---------------------------------------------------------- budgets & goals */
+
+const budgets: Budget[] = clone(BUDGETS);
+const goals: SavingsGoal[] = clone(SAVINGS_GOALS);
+
+export async function getBudgets(): Promise<Budget[]> {
+  await delay(LATENCY.fast);
+  return clone(budgets);
+}
+
+export async function getBudgetProgress(): Promise<{ rows: BudgetProgress[]; totalLimit: number; totalSpent: number }> {
+  await delay(LATENCY.normal);
+  const cutoff = NOW.getTime() - 30 * 86_400_000;
+  const spentByCat = new Map<string, number>();
+  for (const t of TRANSACTIONS) {
+    if (t.amount >= 0) continue;
+    if (new Date(t.date).getTime() < cutoff) continue;
+    spentByCat.set(t.category, (spentByCat.get(t.category) ?? 0) + Math.abs(t.amount));
+  }
+  const rows: BudgetProgress[] = budgets.map((b) => {
+    const spent = spentByCat.get(b.category) ?? 0;
+    return {
+      ...b,
+      spent,
+      pct: b.monthlyLimit > 0 ? Math.round((spent / b.monthlyLimit) * 100) : 0,
+    };
+  });
+  return {
+    rows,
+    totalLimit: rows.reduce((s, r) => s + r.monthlyLimit, 0),
+    totalSpent: rows.reduce((s, r) => s + r.spent, 0),
+  };
+}
+
+export async function setBudget(
+  category: TransactionCategory,
+  limitCents: number,
+): Promise<Budget[]> {
+  await delay(LATENCY.fast);
+  const b = budgets.find((x) => x.category === category);
+  if (b) b.monthlyLimit = Math.max(0, Math.round(limitCents));
+  else budgets.push({ category, monthlyLimit: Math.max(0, Math.round(limitCents)) });
+  return clone(budgets);
+}
+
+export async function getSavingsGoals(): Promise<SavingsGoal[]> {
+  await delay(LATENCY.fast);
+  return clone(goals);
+}
+
+export async function contributeToGoal(id: string, amountCents: number): Promise<SavingsGoal[]> {
+  await delay(LATENCY.normal);
+  const g = goals.find((x) => x.id === id);
+  if (g && amountCents > 0) g.saved = Math.min(g.target, g.saved + Math.round(amountCents));
+  return clone(goals);
+}
+
+/* ----------------------------------------------------- profile & notifications */
+
+const profile: Profile = clone(PROFILE);
+const notifications: NotificationItem[] = clone(NOTIFICATIONS);
+
+export async function getProfile(): Promise<Profile> {
+  await delay(LATENCY.fast);
+  return clone(profile);
+}
+
+export async function updateProfile(patch: Partial<Omit<Profile, "accountNicknames">>): Promise<Profile> {
+  await delay(LATENCY.normal);
+  Object.assign(profile, patch);
+  return clone(profile);
+}
+
+export async function setAccountNickname(accountId: string, nickname: string): Promise<Profile> {
+  await delay(LATENCY.fast);
+  const trimmed = nickname.trim();
+  if (trimmed) profile.accountNicknames[accountId] = trimmed;
+  else delete profile.accountNicknames[accountId];
+  const acc = ACCOUNTS.find((a) => a.id === accountId);
+  if (acc) acc.nickname = trimmed || undefined;
+  return clone(profile);
+}
+
+export async function getNotifications(): Promise<NotificationItem[]> {
+  await delay(LATENCY.fast);
+  return clone(
+    [...notifications].sort((a, b) => +new Date(b.at) - +new Date(a.at)),
+  );
+}
+
+export async function markNotificationRead(id: string): Promise<NotificationItem[]> {
+  await delay(LATENCY.instant);
+  const n = notifications.find((x) => x.id === id);
+  if (n) n.read = true;
+  return getNotifications();
+}
+
+export async function markAllNotificationsRead(): Promise<NotificationItem[]> {
+  await delay(LATENCY.fast);
+  notifications.forEach((n) => (n.read = true));
+  return getNotifications();
 }

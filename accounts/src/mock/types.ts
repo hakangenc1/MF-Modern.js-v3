@@ -4,6 +4,8 @@ export interface Account {
   id: string;
   name: string;
   type: AccountType;
+  /** User-set nickname, shown in place of `name` when present. */
+  nickname?: string;
   /** Masked account/card number, e.g. "•••• 4821". */
   mask: string;
   /** Current balance in minor units (cents). Negative = owed (credit). */
@@ -46,6 +48,8 @@ export interface Transaction {
   status: TransactionStatus;
   /** Account balance in cents immediately after this transaction posted. */
   runningBalance: number;
+  /** Free-text note the user attached. */
+  note?: string;
 }
 
 export interface Page<T> {
@@ -88,6 +92,22 @@ export interface Transfer {
   status: TransferStatus;
   createdAt: string;
   executeAt: string;
+  /** "internal" = between the user's own accounts (toPayeeId is an account id). */
+  kind?: "external" | "internal";
+}
+
+export type RecurringCadence = "weekly" | "monthly";
+
+export interface RecurringRule {
+  id: string;
+  fromAccountId: string;
+  toPayeeId: string;
+  toName: string;
+  amount: number; // cents
+  reference: string;
+  cadence: RecurringCadence;
+  nextRun: string;
+  active: boolean;
 }
 
 export interface User {
@@ -129,6 +149,13 @@ export interface SecurityOverview {
   alerts: { id: string; level: "info" | "warning"; title: string; detail: string; at: string }[];
 }
 
+export interface VirtualCard {
+  id: string;
+  label: string;
+  mask: string;
+  createdAt: string;
+}
+
 export interface Card {
   id: string;
   accountId: string;
@@ -137,8 +164,73 @@ export interface Card {
   mask: string;
   expiry: string;
   frozen: boolean;
+  /** Reason recorded when the card was frozen (or lost). */
+  freezeReason?: string;
   contactless: boolean;
   monthlyLimit: number; // cents
   monthlySpent: number; // cents
   color: "graphite" | "sapphire" | "emerald";
+  /** Spend categories currently blocked on this card. */
+  categoryLocks: TransactionCategory[];
+  virtualCards: VirtualCard[];
+  /** Set when the card was reported lost and reissued. */
+  replacedAt?: string;
+}
+
+/* --------------------------------------------------------- budgets & goals */
+
+export interface Budget {
+  category: TransactionCategory;
+  monthlyLimit: number; // cents
+}
+
+export interface BudgetProgress extends Budget {
+  spent: number; // cents, last 30 days
+  pct: number; // 0-100+ (over budget can exceed 100)
+}
+
+export interface SavingsGoal {
+  id: string;
+  accountId: string;
+  name: string;
+  target: number; // cents
+  saved: number; // cents
+  targetDate: string;
+}
+
+/* ------------------------------------------------------ profile & alerts */
+
+export interface Profile {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  marketingEmails: boolean;
+  pushAlerts: boolean;
+  /** accountId → nickname. */
+  accountNicknames: Record<string, string>;
+}
+
+export type NotificationKind = "payment" | "security" | "statement" | "system";
+
+export interface NotificationItem {
+  id: string;
+  kind: NotificationKind;
+  title: string;
+  detail: string;
+  at: string;
+  read: boolean;
+}
+
+export interface Statement {
+  id: string;
+  accountId: string;
+  /** "2026-08" */
+  period: string;
+  /** "August 2026" */
+  label: string;
+  opening: number; // cents
+  closing: number; // cents
+  totalIn: number; // cents
+  totalOut: number; // cents
 }

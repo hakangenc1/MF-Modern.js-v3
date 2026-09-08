@@ -1,5 +1,15 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@modern-js/runtime/router";
-import { getCards, setCardFrozen, type Card } from "@/mock";
+import {
+  addVirtualCard,
+  deleteVirtualCard,
+  getCards,
+  replaceCard,
+  setCardFrozen,
+  setCardLimit,
+  toggleCategoryLock,
+  type Card,
+  type TransactionCategory,
+} from "@/mock";
 import { getSession } from "@/mock/session";
 
 export type CardsData = { cards: Card[] };
@@ -12,7 +22,28 @@ export const loader = async ({ request }: LoaderFunctionArgs): Promise<CardsData
 export const action = async ({ request }: ActionFunctionArgs) => {
   const form = await request.formData();
   const id = String(form.get("id"));
-  const frozen = form.get("frozen") === "true";
-  const card = await setCardFrozen(id, frozen);
+  const intent = String(form.get("intent") ?? "freeze");
+
+  let card: Card | null = null;
+  switch (intent) {
+    case "freeze":
+      card = await setCardFrozen(id, form.get("frozen") === "true", String(form.get("reason") ?? ""));
+      break;
+    case "limit":
+      card = await setCardLimit(id, Math.round(Number(form.get("limit") ?? "0") * 100));
+      break;
+    case "lock":
+      card = await toggleCategoryLock(id, String(form.get("category")) as TransactionCategory);
+      break;
+    case "add-virtual":
+      card = await addVirtualCard(id, String(form.get("label") ?? ""));
+      break;
+    case "del-virtual":
+      card = await deleteVirtualCard(id, String(form.get("vid")));
+      break;
+    case "replace":
+      card = await replaceCard(id);
+      break;
+  }
   return { card };
 };

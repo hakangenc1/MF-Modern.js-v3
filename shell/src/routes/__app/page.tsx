@@ -14,9 +14,11 @@ import {
   formatCurrency,
   formatPercent,
   type Account,
+  type BudgetProgress,
   type CashflowPoint,
   type NetWorth,
   type Payee,
+  type SavingsGoal,
   type SecurityOverview,
   type SpendingSlice,
   type Transaction,
@@ -26,7 +28,13 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader, Money, StatTile, SectionCard } from "@/components/patterns/kit";
 import { BalanceSparkline } from "@/components/patterns/charts";
 import { ActivityListSkeleton, ChartSkeleton } from "@/components/patterns/skeletons";
-import { CashflowCard, RecentActivityCard, SpendingCard } from "accounts/widgets";
+import {
+  BudgetSummaryCard,
+  CashflowCard,
+  RecentActivityCard,
+  SavingsGoalCard,
+  SpendingCard,
+} from "accounts/widgets";
 import { QuickTransferCard } from "payments/QuickTransferCard";
 import { SecurityStatusCard } from "security/SecurityStatusCard";
 
@@ -38,6 +46,8 @@ interface DashboardData {
   accounts: Account[];
   payees: Payee[];
   security: SecurityOverview;
+  budget: { rows: BudgetProgress[]; totalLimit: number; totalSpent: number };
+  goal: SavingsGoal | null;
   cashflow: Promise<CashflowPoint[]>;
   spending: Promise<{ slices: SpendingSlice[]; total: number }>;
   activity: Promise<Transaction[]>;
@@ -51,8 +61,19 @@ const ACCOUNT_ICON = {
 } as const;
 
 export default function Dashboard() {
-  const { heading, today, netWorth, accounts, payees, security, cashflow, spending, activity } =
-    useLoaderData() as DashboardData;
+  const {
+    heading,
+    today,
+    netWorth,
+    accounts,
+    payees,
+    security,
+    budget,
+    goal,
+    cashflow,
+    spending,
+    activity,
+  } = useLoaderData() as DashboardData;
 
   // Net-worth trend: sum every account's balance history point-by-point.
   const len = Math.min(...accounts.map((a) => a.history.length));
@@ -151,7 +172,15 @@ export default function Dashboard() {
             <Await resolve={activity}>{(d) => <RecentActivityCard data={d} />}</Await>
           </Suspense>
         </div>
-        <SecurityStatusCard overview={security} />
+        <div className="space-y-4">
+          <SecurityStatusCard overview={security} />
+          <BudgetSummaryCard
+            rows={budget.rows}
+            totalLimit={budget.totalLimit}
+            totalSpent={budget.totalSpent}
+          />
+          {goal ? <SavingsGoalCard goal={goal} /> : null}
+        </div>
       </div>
     </>
   );

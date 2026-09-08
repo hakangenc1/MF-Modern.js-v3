@@ -10,14 +10,28 @@ numbers, its own `node_modules`. Shared UI is just shadcn components copied into
 
 ```
 northwind-mfe/            ← this folder: only orchestration scripts, no app code
-├── shell/       :3000    ← host. routing, auth + 2FA, app chrome, /cards, /insights
-├── accounts/    :3001    ← remote. exposes AccountsView, AccountDetailView, widgets, data
-├── payments/    :3002    ← remote. exposes TransferView, PayeesView, ActivityView, QuickTransferCard, data
+├── shell/       :3000    ← host. routing, auth + 2FA, app chrome, /cards, /insights,
+│                             /budgets, /statements, /notifications, /settings
+├── accounts/    :3001    ← remote. exposes AccountsView, AccountDetailView, BudgetsView,
+│                             StatementsView, TransactionDetail, widgets, data
+├── payments/    :3002    ← remote. exposes TransferView (payee + own-account), PayeesView
+│                             (CRUD), ActivityView (scheduled/recurring), QuickTransferCard, data
 │                             — composes twofactor in the transfer flow
 ├── security/    :3003    ← remote. exposes Security/TwoFactor/Devices/SessionsView, data
 └── twofactor/   :3004    ← remote. exposes TwoFactorChallenge, TwoFactorDialog, TwoFactorGate, data
                               — the reusable 2FA widget; shell uses it at login, payments before a transfer
 ```
+
+**Design**: the stock shadcn/ui **black-and-white** palette (neutral base). The only
+chromatic tokens are `--destructive`, the money ink (`--pos` / `--neg`, muted green/red)
+and the badge status colors; charts are a monochrome ramp. Federated views only use
+utility classes that reach the host stylesheet — `shell/src/styles.css` `@source`s the
+sibling remotes' `src` so every class ships.
+
+**Loading UX**: a filter chip / action button spins **on itself**; the full-page
+navigation treatment (top progress bar + soft blur) fires **only for page-to-page moves**,
+never for in-page filtering. Federated views get a `pendingHref` prop; mutations use a
+per-control `useFetcher`. See `shell/src/components/patterns/pending.tsx`.
 
 ## Docs
 
@@ -55,6 +69,8 @@ Open **http://localhost:3000** → any email + password → 2FA code **`123456`*
 | `npm run start` | run each app's `.output/index.js` (production; deploys first if needed) |
 | `npm run typecheck` | `tsc --noEmit` in each app |
 | `npm run init:git` | turn each app into its own git repository |
+| `node scripts/sync-mock.mjs` | copy `shell/src/mock/*` → the other 3 data apps (run after editing mock); `--check` fails on drift |
+| `node scripts/keep-warm.mjs` | ping every deployed service so free hosting doesn't spin them down (run on a cron) |
 
 Each app also runs on its own — `cd accounts && npm run dev` serves the accounts remote
 standalone on :3001 with its own routes.
@@ -133,6 +149,14 @@ Every app pins the same Module Federation version matrix via `pnpm.overrides` in
   route's content instead** — the pages and every flow (including the transfer + 2FA) work,
   but that content isn't in the first HTML and the errors show in the console. Appears to be
   an ESM/CJS interop edge in `@module-federation/node` for this Modern.js version.
+- **Cold free‑tier remotes.** SSR federation needs every remote reachable when the shell
+  renders. On free hosting a remote spins down after ~15 min idle and answers with an HTML
+  "waking up" page instead of its manifest JSON — so the **first** request after an idle
+  period is slow (the host retries the manifest for ~40s while the remote boots — see
+  `shell/src/mf-runtime-plugin.ts`) and, if a remote is still cold after that, the shell
+  shows a "warming up, retrying" page (`shell/src/routes/error.tsx`) rather than a bare 500.
+  Run **`scripts/keep-warm.mjs`** on a ~10‑min cron (a free Render Cron Job works) to keep
+  the whole set warm.
 - Modern.js 3.5's client data layer doesn't follow redirects returned from route
   **actions** (only loaders); the auth actions return `{ next }` + `Set-Cookie` and the
   component navigates.

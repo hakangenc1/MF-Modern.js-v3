@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@modern-js/runtime/router";
 import { getSession } from "@/mock/session";
-import { loadTransferContext, submitTransfer } from "payments/data";
+import { loadTransferContext, submitInternalTransfer, submitTransfer } from "payments/data";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   getSession(request);
@@ -10,12 +10,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   const form = await request.formData();
   const amount = Math.round(Number(form.get("amount") ?? "0") * 100);
-  const result = await submitTransfer({
-    fromAccountId: String(form.get("fromAccountId") ?? ""),
-    toPayeeId: String(form.get("toPayeeId") ?? ""),
-    amount,
-    reference: String(form.get("reference") ?? ""),
-    when: String(form.get("when") ?? "now"),
-  });
+  const mode = String(form.get("mode") ?? "payee");
+
+  const result =
+    mode === "internal"
+      ? await submitInternalTransfer({
+          fromAccountId: String(form.get("fromAccountId") ?? ""),
+          toAccountId: String(form.get("toAccountId") ?? ""),
+          amount,
+          reference: String(form.get("reference") ?? ""),
+        })
+      : await submitTransfer({
+          fromAccountId: String(form.get("fromAccountId") ?? ""),
+          toPayeeId: String(form.get("toPayeeId") ?? ""),
+          amount,
+          reference: String(form.get("reference") ?? ""),
+          when: String(form.get("when") ?? "now") as "now" | "scheduled",
+        });
+
   return result.ok ? { result } : { error: result.error };
 };

@@ -31,6 +31,11 @@ const LABELS: Record<string, string> = {
   payees: "Payees",
   activity: "Activity",
   cards: "Cards",
+  budgets: "Budgets",
+  insights: "Insights",
+  statements: "Statements",
+  notifications: "Notifications",
+  settings: "Settings",
   security: "Security",
   "two-factor": "Two-factor auth",
   devices: "Devices",
@@ -38,7 +43,7 @@ const LABELS: Record<string, string> = {
 };
 
 export default function AppLayout() {
-  const { user, remoteOrigins } = useLoaderData() as AppLayoutData;
+  const { user, remoteOrigins, notifications, unreadCount } = useLoaderData() as AppLayoutData;
   const { pathname } = useLocation();
   const segments = pathname.split("/").filter(Boolean);
   // Upgrade federated <a href> / GET <form> to client-side navigation.
@@ -91,7 +96,7 @@ export default function AppLayout() {
             <div className="hidden sm:block">
               <CommandMenu />
             </div>
-            <NotificationBell />
+            <NotificationBell notifications={notifications} unreadCount={unreadCount} />
             <ThemeToggle />
             <Separator orientation="vertical" className="mx-1 h-5" />
             <UserMenu user={user} />

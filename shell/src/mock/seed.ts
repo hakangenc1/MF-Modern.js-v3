@@ -1,12 +1,18 @@
 import type {
   Account,
+  Budget,
   CashflowPoint,
   Card,
   Device,
+  NotificationItem,
   Payee,
+  Profile,
+  RecurringRule,
+  SavingsGoal,
   SecurityOverview,
   SessionEntry,
   SpendingSlice,
+  Statement,
   Transaction,
   TransactionCategory,
   Transfer,
@@ -250,8 +256,104 @@ export const SECURITY: SecurityOverview = {
 };
 
 export const CARDS: Card[] = [
-  { id: "card_1", accountId: "acc_credit", name: "Sapphire Credit", network: "Visa", mask: "•••• 3318", expiry: "08/29", frozen: false, contactless: true, monthlyLimit: 5_000_00, monthlySpent: 1_842_55, color: "sapphire" },
-  { id: "card_2", accountId: "acc_checking", name: "Everyday Debit", network: "Mastercard", mask: "•••• 4821", expiry: "03/28", frozen: false, contactless: true, monthlyLimit: 3_000_00, monthlySpent: 986_20, color: "graphite" },
+  {
+    id: "card_1", accountId: "acc_credit", name: "Sapphire Credit", network: "Visa",
+    mask: "•••• 3318", expiry: "08/29", frozen: false, contactless: true,
+    monthlyLimit: 5_000_00, monthlySpent: 1_842_55, color: "sapphire",
+    categoryLocks: [],
+    virtualCards: [
+      { id: "vc_1", label: "Subscriptions", mask: "•••• 7702", createdAt: daysAgo(64).toISOString() },
+    ],
+  },
+  {
+    id: "card_2", accountId: "acc_checking", name: "Everyday Debit", network: "Mastercard",
+    mask: "•••• 4821", expiry: "03/28", frozen: false, contactless: true,
+    monthlyLimit: 3_000_00, monthlySpent: 986_20, color: "graphite",
+    categoryLocks: ["Travel"],
+    virtualCards: [],
+  },
+];
+
+/* ---------------------------------------------------------- recurring rules */
+
+export const RECURRING: RecurringRule[] = [
+  { id: "rec_1", fromAccountId: "acc_checking", toPayeeId: "pay_landlord", toName: "Hayes Valley Properties", amount: 3_250_00, reference: "Apt 4B rent", cadence: "monthly", nextRun: daysAgo(-3).toISOString(), active: true },
+  { id: "rec_2", fromAccountId: "acc_checking", toPayeeId: "pay_charity", toName: "SF Food Bank", amount: 50_00, reference: "Monthly gift", cadence: "monthly", nextRun: daysAgo(-6).toISOString(), active: true },
+  { id: "rec_3", fromAccountId: "acc_checking", toPayeeId: "pay_rivera", toName: "Jordan Rivera", amount: 120_00, reference: "Utilities share", cadence: "weekly", nextRun: daysAgo(-2).toISOString(), active: false },
+];
+
+/* ---------------------------------------------------------- budgets & goals */
+
+export const BUDGETS: Budget[] = [
+  { category: "Groceries", monthlyLimit: 150_000 },
+  { category: "Dining", monthlyLimit: 60_000 },
+  { category: "Shopping", monthlyLimit: 140_000 },
+  { category: "Transport", monthlyLimit: 50_000 },
+  { category: "Entertainment", monthlyLimit: 25_000 },
+  { category: "Health", monthlyLimit: 90_000 },
+];
+
+export const SAVINGS_GOALS: SavingsGoal[] = [
+  { id: "goal_1", accountId: "acc_savings", name: "Emergency fund", target: 5_000_000, saved: 4_218_900, targetDate: "2026-12-31" },
+  { id: "goal_2", accountId: "acc_savings", name: "Japan trip", target: 800_000, saved: 265_000, targetDate: "2027-04-01" },
+];
+
+/* ------------------------------------------------------------ statements */
+
+export const STATEMENTS: Statement[] = (() => {
+  const months = [
+    { period: "2026-08", label: "August 2026" },
+    { period: "2026-07", label: "July 2026" },
+    { period: "2026-06", label: "June 2026" },
+    { period: "2026-05", label: "May 2026" },
+    { period: "2026-04", label: "April 2026" },
+    { period: "2026-03", label: "March 2026" },
+  ];
+  const out: Statement[] = [];
+  ACCOUNTS.forEach((account, ai) => {
+    if (account.type === "investment") return;
+    const r = rng(7000 + ai);
+    let closing = account.balance;
+    months.forEach((m, mi) => {
+      const totalIn = Math.round(between(r, 180_000, 360_000) / 100) * 100;
+      const totalOut = Math.round(between(r, 160_000, 320_000) / 100) * 100;
+      const opening = closing - totalIn + totalOut;
+      out.push({
+        id: `stmt_${account.id}_${m.period}`,
+        accountId: account.id,
+        period: m.period,
+        label: m.label,
+        opening,
+        closing,
+        totalIn,
+        totalOut,
+      });
+      closing = opening;
+      void mi;
+    });
+  });
+  return out;
+})();
+
+/* ----------------------------------------------------- profile & notifications */
+
+export const PROFILE: Profile = {
+  name: USER.name,
+  email: USER.email,
+  phone: "+1 (415) 555-0148",
+  address: "418 Hayes St, Apt 4B, San Francisco, CA 94102",
+  marketingEmails: false,
+  pushAlerts: true,
+  accountNicknames: {},
+};
+
+export const NOTIFICATIONS: NotificationItem[] = [
+  { id: "ntf_1", kind: "payment", title: "Rent payment scheduled", detail: "$3,250.00 to Hayes Valley Properties in 3 days", at: daysAgo(0).toISOString(), read: false },
+  { id: "ntf_2", kind: "security", title: "New sign-in from Austin, US", detail: "Firefox on Windows — review this device", at: daysAgo(19).toISOString(), read: false },
+  { id: "ntf_3", kind: "statement", title: "Statement ready", detail: "Sapphire Credit Card — August 2026", at: daysAgo(5).toISOString(), read: false },
+  { id: "ntf_4", kind: "payment", title: "Transfer completed", detail: "$820.00 to Jordan Rivera", at: daysAgo(6).toISOString(), read: true },
+  { id: "ntf_5", kind: "system", title: "Card limit reached 90%", detail: "Everyday Debit is near its monthly limit", at: daysAgo(8).toISOString(), read: true },
+  { id: "ntf_6", kind: "security", title: "Recovery codes running low", detail: "8 of 10 unused — generate a fresh set", at: daysAgo(5).toISOString(), read: true },
 ];
 
 /** The demo one-time code accepted by the 2FA challenge. */

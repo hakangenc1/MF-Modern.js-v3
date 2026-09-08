@@ -8,6 +8,10 @@ import {
   LifeBuoy,
   Landmark,
   LineChart,
+  PiggyBank,
+  FileText,
+  Bell,
+  Settings,
 } from "lucide-react";
 import {
   Sidebar,
@@ -50,7 +54,15 @@ const NAV: { label: string; items: NavItem[] }[] = [
         ],
       },
       { title: "Cards", to: "/cards", icon: CreditCard },
+      { title: "Budgets", to: "/budgets", icon: PiggyBank },
       { title: "Insights", to: "/insights", icon: LineChart },
+    ],
+  },
+  {
+    label: "Activity",
+    items: [
+      { title: "Statements", to: "/statements", icon: FileText },
+      { title: "Notifications", to: "/notifications", icon: Bell },
     ],
   },
   {
@@ -67,6 +79,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
           { title: "Sessions", to: "/security/sessions" },
         ],
       },
+      { title: "Settings", to: "/settings", icon: Settings },
     ],
   },
 ];

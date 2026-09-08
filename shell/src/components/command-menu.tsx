@@ -2,9 +2,14 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@modern-js/runtime/router";
 import {
   ArrowLeftRight,
+  Bell,
   CreditCard,
+  FileText,
   LayoutDashboard,
+  LineChart,
+  PiggyBank,
   Search,
+  Settings,
   ShieldCheck,
   Users,
   Wallet,
@@ -26,8 +31,15 @@ const LINKS = [
   { group: "Go to", label: "Send money", to: "/payments", icon: ArrowLeftRight },
   { group: "Go to", label: "Payees", to: "/payments/payees", icon: Users },
   { group: "Go to", label: "Cards", to: "/cards", icon: CreditCard },
+  { group: "Go to", label: "Budgets", to: "/budgets", icon: PiggyBank },
+  { group: "Go to", label: "Insights", to: "/insights", icon: LineChart },
+  { group: "Go to", label: "Statements", to: "/statements", icon: FileText },
+  { group: "Go to", label: "Notifications", to: "/notifications", icon: Bell },
   { group: "Go to", label: "Security", to: "/security", icon: ShieldCheck },
+  { group: "Go to", label: "Settings", to: "/settings", icon: Settings },
   { group: "Actions", label: "New transfer", to: "/payments", icon: ArrowLeftRight },
+  { group: "Actions", label: "Move money between accounts", to: "/payments", icon: ArrowLeftRight },
+  { group: "Actions", label: "Add a payee", to: "/payments/payees", icon: Users },
   { group: "Actions", label: "Manage two-factor auth", to: "/security/two-factor", icon: ShieldCheck },
 ];
 
