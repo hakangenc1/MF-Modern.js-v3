@@ -1,16 +1,20 @@
-import { clearedSessionCookie } from "@/mock/session";
+import type { ActionFunctionArgs } from "@modern-js/runtime/router";
+import { clearedEntitlementsCookie, clearedSessionCookie } from "@/mock/session";
 
-// Same shape as loginRedirect() in mock/session.ts (a raw 302 Response with a
-// plain headers object) — that reliably reaches the browser here, whereas the
-// router's redirect() helper and a Headers instance did not forward Set-Cookie.
-// The entitlement override cookie is persona-scoped, so clearing the session is
-// enough: the next persona resolves its own defaults.
-function bounce() {
-  return new Response(null, {
-    status: 302,
-    headers: { Location: "/login", "Set-Cookie": clearedSessionCookie() },
+export type LogoutActionData = { next: string };
+
+// This .output server strips Set-Cookie from a loader's 302, but keeps it on a
+// 200 action Response (same as the login flow). So logout is an action: the
+// page auto-POSTs on mount, we clear the cookie here, and the component
+// navigates to /login.
+export const loader = () => ({}); // page renders, then submits to this route
+
+export const action = async (_args: ActionFunctionArgs) => {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  headers.append("Set-Cookie", clearedSessionCookie());
+  headers.append("Set-Cookie", clearedEntitlementsCookie());
+  return new Response(JSON.stringify({ next: "/login" } satisfies LogoutActionData), {
+    status: 200,
+    headers,
   });
-}
-
-export const loader = bounce;
-export const action = bounce;
+};
