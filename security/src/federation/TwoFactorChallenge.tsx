@@ -51,7 +51,10 @@ export function TwoFactorChallenge({
         >
           <InputOTPGroup>
             {[0, 1, 2, 3, 4, 5].map((i) => (
-              <InputOTPSlot key={i} index={i} className="size-12 text-lg" />
+              // No size override — the slot's own `h-12 w-12 text-lg` classes are
+              // emitted by the host shell's stylesheet (it scans its copy of
+              // ui/input-otp.tsx); a class only this remote uses would not be.
+              <InputOTPSlot key={i} index={i} />
             ))}
           </InputOTPGroup>
         </InputOTP>
