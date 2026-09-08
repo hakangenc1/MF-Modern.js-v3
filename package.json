@@ -1,0 +1,16 @@
+{
+  "name": "northwind-mfe",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Container for 4 independent Module-Federation micro-frontends. Each subfolder is its own repository with its own node_modules.",
+  "scripts": {
+    "install:all": "node scripts/run.mjs install",
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/run.mjs build",
+    "start": "node scripts/start.mjs",
+    "stop": "node scripts/stop.mjs",
+    "typecheck": "node scripts/run.mjs typecheck",
+    "clean": "node scripts/clean.mjs",
+    "init:git": "node scripts/init-git.mjs"
+  }
+}

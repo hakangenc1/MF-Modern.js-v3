@@ -1,0 +1,15 @@
+node_modules
+dist
+.modern-js
+*.log
+.DS_Store
+.env
+.env.local
+*.tsbuildinfo
+
+# The four apps are independent git repositories, checked out side by side.
+# This orchestrator repo only tracks the run scripts + README.
+/shell/
+/accounts/
+/payments/
+/security/
