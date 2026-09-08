@@ -10,9 +10,9 @@ export type VerifyData = { email: string; personaLabel: string; redirectTo: stri
 export type VerifyActionData = { error?: string; next?: string };
 
 export const loader = async ({ request }: LoaderFunctionArgs): Promise<VerifyData | Response> => {
-  if (getSession(request)) return redirect("/");
   const pending = getPending(request);
-  if (!pending) return redirect("/login");
+  // A pending login wins even if a session already exists (persona switch).
+  if (!pending) return getSession(request) ? redirect("/") : redirect("/login");
   const url = new URL(request.url);
   const persona = PERSONAS.find((p) => p.id === pending.personaId);
   return {

@@ -1,20 +1,9 @@
-import type { ActionFunctionArgs } from "@modern-js/runtime/router";
-import { clearedEntitlementsCookie, clearedSessionCookie } from "@/mock/session";
+import { redirect } from "@modern-js/runtime/router";
 
-export type LogoutActionData = { next: string };
-
-// This .output server strips Set-Cookie from a loader's 302, but keeps it on a
-// 200 action Response (same as the login flow). So logout is an action: the
-// page auto-POSTs on mount, we clear the cookie here, and the component
-// navigates to /login.
-export const loader = () => ({}); // page renders, then submits to this route
-
-export const action = async (_args: ActionFunctionArgs) => {
-  const headers = new Headers({ "Content-Type": "application/json" });
-  headers.append("Set-Cookie", clearedSessionCookie());
-  headers.append("Set-Cookie", clearedEntitlementsCookie());
-  return new Response(JSON.stringify({ next: "/login" } satisfies LogoutActionData), {
-    status: 200,
-    headers,
-  });
-};
+// This .output server drops Set-Cookie from a loader's redirect, so we can't
+// clear the cookie here. Instead send the user to the persona picker with
+// ?switch — choosing a persona there issues a fresh bank_session that overwrites
+// the old one, and the persona-scoped entitlement override is ignored once the
+// persona changes. (An unused old cookie otherwise lapses on its 8h Max-Age.)
+export const loader = () => redirect("/login?switch=1");
+export const action = () => redirect("/login?switch=1");

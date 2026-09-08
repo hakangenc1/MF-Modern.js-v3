@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import type { LoginData, LoginActionData, PersonaCard } from "./page.data";
 
 export default function LoginRoute() {
-  const { redirectTo, personas } = useLoaderData() as LoginData;
+  const { redirectTo, personas, currentPersona } = useLoaderData() as LoginData;
   const actionData = useActionData() as LoginActionData | undefined;
   const submit = useSubmit();
   const navigate = useNavigate();
@@ -31,8 +31,12 @@ export default function LoginRoute() {
 
   return (
     <AuthShell
-      title="Choose a profile"
-      description="This demo signs you in as one of two entitlement profiles. The profile decides which features the shell unlocks and passes down to the remote apps."
+      title={currentPersona ? "Switch profile" : "Choose a profile"}
+      description={
+        currentPersona
+          ? `Signed in as ${currentPersona}. Pick a profile to switch — it decides which features the shell unlocks and passes down to the remote apps.`
+          : "This demo signs you in as one of two entitlement profiles. The profile decides which features the shell unlocks and passes down to the remote apps."
+      }
       footer={
         <>
           You can flip individual entitlements later from the top bar or{" "}

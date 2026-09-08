@@ -16,7 +16,12 @@ export type PersonaCard = {
   cannot: string[];
 };
 
-export type LoginData = { redirectTo: string; personas: PersonaCard[] };
+export type LoginData = {
+  redirectTo: string;
+  personas: PersonaCard[];
+  /** Set when re-opening the picker while already signed in (?switch). */
+  currentPersona: string | null;
+};
 export type LoginActionData = { error?: string; next?: string };
 
 const toCard = (p: (typeof PERSONAS)[number]): PersonaCard => ({
@@ -31,12 +36,14 @@ const toCard = (p: (typeof PERSONAS)[number]): PersonaCard => ({
 
 export const loader = async ({ request }: LoaderFunctionArgs): Promise<LoginData | Response> => {
   const url = new URL(request.url);
+  const session = getSession(request);
   // `?switch` lets an already-signed-in user re-open the picker to change persona
   // (picking one issues a fresh bank_session that overwrites the old one).
-  if (getSession(request) && !url.searchParams.has("switch")) return redirect("/");
+  if (session && !url.searchParams.has("switch")) return redirect("/");
   return {
     redirectTo: safeRedirect(url.searchParams.get("redirectTo")),
     personas: PERSONAS.map(toCard),
+    currentPersona: session ? session.persona.label : null,
   };
 };
 
