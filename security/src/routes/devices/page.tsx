@@ -1,16 +1,16 @@
-import { useActionData, useLoaderData, useNavigation, useSubmit } from "@modern-js/runtime/router";
+import { useFetcher, useLoaderData } from "@modern-js/runtime/router";
 import DevicesView from "@/federation/DevicesView";
 import type { Device } from "@/mock";
 export default function Page() {
   const { devices } = useLoaderData() as { devices: Device[] };
-  const actionData = useActionData() as { devices?: Device[] } | undefined;
-  const submit = useSubmit();
-  const nav = useNavigation();
+  const fetcher = useFetcher<{ devices?: Device[] }>();
+  const pendingId =
+    fetcher.state !== "idle" ? (fetcher.formData?.get("id") as string | null) : null;
   return (
     <DevicesView
-      devices={actionData?.devices ?? devices}
-      pending={nav.state !== "idle"}
-      onRevoke={(id) => submit({ id }, { method: "post" })}
+      devices={fetcher.data?.devices ?? devices}
+      pendingId={pendingId}
+      onRevoke={(id) => fetcher.submit({ id }, { method: "post" })}
     />
   );
 }

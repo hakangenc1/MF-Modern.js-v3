@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigation } from "@modern-js/runtime/router";
+import { useLocation, useNavigation } from "@modern-js/runtime/router";
 import { cn } from "@/lib/utils";
 
 /**
- * Top-of-window navigation progress bar + a soft focus-pull on the page content
- * while the next route's data loads. Client-side only — `useNavigation` reports
+ * Top-of-window navigation progress bar. Fires for *every* navigation
+ * (page-to-page and in-page filter/sort/search) — it is the one persistent
+ * "navigation is happening" signal. Client-side only: `useNavigation` reports
  * `idle` during SSR, so nothing renders on the first paint.
  */
 export function NavProgress() {
@@ -60,20 +61,23 @@ export function NavProgress() {
 
 /**
  * Wraps the routed content. Pulls it slightly out of focus (blur + dim + a hair
- * of scale) while the next route loads, then eases it back — a smooth hand-off
- * rather than a hard content swap. Honors `prefers-reduced-motion`.
+ * of scale) while the next route loads — but **only for a real page-to-page
+ * move**. A query-only change (a filter chip, a sort header, a search) keeps the
+ * page perfectly still; the control that was clicked shows its own spinner
+ * instead. Honors `prefers-reduced-motion`.
  */
 export function NavTransition({ children }: { children: React.ReactNode }) {
   const nav = useNavigation();
-  const leaving = nav.state === "loading";
+  const { pathname } = useLocation();
+  // `nav.location` is set only mid-navigation. A different pathname = new page.
+  const changingPage =
+    nav.state === "loading" && !!nav.location && nav.location.pathname !== pathname;
 
   return (
     <div
       className={cn(
         "origin-top transition-[filter,opacity,transform] duration-300 ease-out motion-reduce:transition-none",
-        // The blur/scale/dim only apply for motion-safe users; reduced-motion
-        // keeps the content untouched.
-        leaving
+        changingPage
           ? "pointer-events-none select-none opacity-100 motion-safe:scale-[0.99] motion-safe:opacity-50 motion-safe:blur-[3px]"
           : "opacity-100",
       )}

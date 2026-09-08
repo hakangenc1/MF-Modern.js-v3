@@ -1,4 +1,4 @@
-import { Laptop, Monitor, Smartphone, Tablet } from "lucide-react";
+import { Laptop, Loader2, Monitor, Smartphone, Tablet } from "lucide-react";
 import { formatDate, relativeTime, type Device } from "@/mock";
 import {
   Card,
@@ -24,11 +24,12 @@ const ICON = { phone: Smartphone, laptop: Laptop, tablet: Tablet, desktop: Monit
 export default function DevicesView({
   devices,
   onRevoke,
-  pending = false,
+  pendingId = null,
 }: {
   devices: Device[];
   onRevoke: (id: string) => void;
-  pending?: boolean;
+  /** id of the device currently being revoked (spinner on that row only). */
+  pendingId?: string | null;
 }) {
   return (
     <>
@@ -89,9 +90,12 @@ export default function DevicesView({
                         <Button
                           variant="ghost"
                           size="sm"
-                          disabled={pending}
+                          disabled={pendingId === d.id}
                           onClick={() => onRevoke(d.id)}
                         >
+                          {pendingId === d.id ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : null}
                           Remove
                         </Button>
                       )}

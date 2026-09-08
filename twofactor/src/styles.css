@@ -20,117 +20,119 @@
 }
 
 /*
- * Northwind Bank design tokens. shadcn/ui token contract (Tailwind v4),
- * themed for an enterprise banking product: cool neutrals + a deep
- * indigo primary. Chart ramp is a calibrated categorical palette.
+ * Northwind Bank design tokens — the stock shadcn/ui palette (neutral base,
+ * Tailwind v4, oklch). Deliberately black-and-white: the only chromatic tokens
+ * are `--destructive`, the money ink (`--pos` / `--neg`) and the badge
+ * `--success` / `--warning`. Charts use a monochrome ramp.
  */
 :root {
   --radius: 0.625rem;
 
-  --background: oklch(0.995 0.001 260);
-  --foreground: oklch(0.21 0.02 265);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
 
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.02 265);
+  --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.02 265);
+  --popover-foreground: oklch(0.145 0 0);
 
-  --primary: oklch(0.47 0.13 264);
-  --primary-foreground: oklch(0.985 0.002 260);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
 
-  --secondary: oklch(0.968 0.004 260);
-  --secondary-foreground: oklch(0.3 0.03 265);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
 
-  --muted: oklch(0.968 0.004 260);
-  --muted-foreground: oklch(0.53 0.02 265);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
 
-  --accent: oklch(0.958 0.012 258);
-  --accent-foreground: oklch(0.3 0.05 265);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
 
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0.002 260);
+  --destructive-foreground: oklch(0.985 0 0);
 
+  /* Non-chrome status ink — badges and pass/fail metrics only, never buttons. */
   --success: oklch(0.62 0.14 156);
-  --success-foreground: oklch(0.985 0.002 260);
+  --success-foreground: oklch(0.985 0 0);
   --warning: oklch(0.75 0.15 75);
   --warning-foreground: oklch(0.28 0.05 75);
 
-  /* Signed money: positive / negative amount ink (dataviz status ramp). */
-  --pos: #006300;
-  --neg: #d03b3b;
+  /* Signed money: positive / negative amount ink (muted bank tones). */
+  --pos: #15803d;
+  --neg: #b91c1c;
 
-  --border: oklch(0.918 0.005 260);
-  --input: oklch(0.918 0.005 260);
-  --ring: oklch(0.47 0.13 264);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
 
-  /* Categorical chart ramp — validated dataviz default (light steps). */
-  --chart-1: #2a78d6;
-  --chart-2: #eb6834;
-  --chart-3: #1baf7a;
-  --chart-4: #eda100;
-  --chart-5: #e87ba4;
+  /* Monochrome chart ramp — one ink, then descending greys (light steps). */
+  --chart-1: oklch(0.145 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.708 0 0);
+  --chart-4: oklch(0.85 0 0);
+  --chart-5: oklch(0.922 0 0);
 
-  --sidebar: oklch(0.985 0.003 260);
-  --sidebar-foreground: oklch(0.21 0.02 265);
-  --sidebar-primary: oklch(0.47 0.13 264);
-  --sidebar-primary-foreground: oklch(0.985 0.002 260);
-  --sidebar-accent: oklch(0.955 0.008 260);
-  --sidebar-accent-foreground: oklch(0.3 0.05 265);
-  --sidebar-border: oklch(0.912 0.006 260);
-  --sidebar-ring: oklch(0.47 0.13 264);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
-  --background: oklch(0.17 0.014 265);
-  --foreground: oklch(0.965 0.003 260);
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
 
-  --card: oklch(0.213 0.017 265);
-  --card-foreground: oklch(0.965 0.003 260);
-  --popover: oklch(0.213 0.017 265);
-  --popover-foreground: oklch(0.965 0.003 260);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
 
-  --primary: oklch(0.7 0.12 262);
-  --primary-foreground: oklch(0.18 0.02 265);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
 
-  --secondary: oklch(0.27 0.02 265);
-  --secondary-foreground: oklch(0.965 0.003 260);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
 
-  --muted: oklch(0.27 0.02 265);
-  --muted-foreground: oklch(0.7 0.02 262);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
 
-  --accent: oklch(0.31 0.03 264);
-  --accent-foreground: oklch(0.965 0.003 260);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
 
   --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0.002 260);
+  --destructive-foreground: oklch(0.985 0 0);
 
   --success: oklch(0.7 0.14 158);
   --success-foreground: oklch(0.18 0.02 265);
   --warning: oklch(0.8 0.14 78);
   --warning-foreground: oklch(0.2 0.04 78);
 
-  --pos: #0ca30c;
-  --neg: #e66767;
+  --pos: #4ade80;
+  --neg: #f87171;
 
   --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.7 0.12 262);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
 
-  /* Categorical chart ramp — validated dataviz default (dark steps). */
-  --chart-1: #3987e5;
-  --chart-2: #d95926;
-  --chart-3: #199e70;
-  --chart-4: #c98500;
-  --chart-5: #d55181;
+  /* Monochrome chart ramp (dark steps). */
+  --chart-1: oklch(0.985 0 0);
+  --chart-2: oklch(0.708 0 0);
+  --chart-3: oklch(0.556 0 0);
+  --chart-4: oklch(0.439 0 0);
+  --chart-5: oklch(0.269 0 0);
 
-  --sidebar: oklch(0.2 0.016 265);
-  --sidebar-foreground: oklch(0.965 0.003 260);
-  --sidebar-primary: oklch(0.7 0.12 262);
-  --sidebar-primary-foreground: oklch(0.18 0.02 265);
-  --sidebar-accent: oklch(0.27 0.02 265);
-  --sidebar-accent-foreground: oklch(0.965 0.003 260);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.922 0 0);
+  --sidebar-primary-foreground: oklch(0.205 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.7 0.12 262);
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @theme inline {
@@ -215,5 +217,13 @@
   /* Tabular figures for money everywhere it matters. */
   .tabular-nums {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Skip layout/paint for off-screen sections; reserve height to avoid CLS. */
+  .cv-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 480px;
   }
 }

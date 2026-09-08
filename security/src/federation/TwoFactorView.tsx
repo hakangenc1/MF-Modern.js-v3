@@ -25,16 +25,20 @@ export interface TwoFactorActions {
 export default function TwoFactorView({
   overview,
   actions,
-  pending = false,
+  pendingIntent = null,
   verifyResult,
   recoveryCodes,
 }: {
   overview: SecurityOverview;
   actions: TwoFactorActions;
-  pending?: boolean;
+  /** which action is in flight — "toggle" | "regenerate" | "verify" — so each
+   *  control shows its own spinner. */
+  pendingIntent?: string | null;
   verifyResult?: { ok?: boolean; error?: string } | null;
   recoveryCodes?: string[] | null;
 }) {
+  const toggling = pendingIntent === "toggle";
+  const regenerating = pendingIntent === "regenerate";
   return (
     <>
       <PageHeader
@@ -68,7 +72,7 @@ export default function TwoFactorView({
               <Switch
                 id="tf"
                 checked={overview.twoFactorEnabled}
-                disabled={pending}
+                disabled={toggling}
                 onCheckedChange={actions.onToggle}
               />
             </div>
@@ -77,7 +81,7 @@ export default function TwoFactorView({
               <TwoFactorChallenge
                 title="Verify a code"
                 description="Enter a current 6-digit code to confirm your authenticator is in sync."
-                pending={pending}
+                pending={pendingIntent === "verify"}
                 error={verifyResult?.error}
                 autoFocus={false}
                 onSubmit={actions.onVerify}
@@ -115,10 +119,10 @@ export default function TwoFactorView({
               variant="outline"
               size="sm"
               className="w-full"
-              disabled={pending}
+              disabled={regenerating}
               onClick={actions.onRegenerate}
             >
-              {pending ? (
+              {regenerating ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 <RefreshCw className="size-4" />

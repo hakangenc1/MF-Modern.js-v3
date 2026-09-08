@@ -4,8 +4,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Line,
-  LineChart,
   XAxis,
   YAxis,
 } from "recharts";
@@ -24,9 +22,11 @@ const money = (v: number) => formatCurrency(v, { compact: true });
 
 /* ------------------------------------------------ cashflow (income vs spend) */
 
+// Income and spending are literally +/- flows, so they carry the money ink
+// (muted green / red) — everything else in the chart is greyscale.
 const cashflowConfig = {
-  income: { label: "Income", color: "var(--chart-1)" },
-  spending: { label: "Spending", color: "var(--chart-2)" },
+  income: { label: "Income", color: "var(--pos)" },
+  spending: { label: "Spending", color: "var(--neg)" },
 } satisfies ChartConfig;
 
 export function CashflowChart({ data }: { data: CashflowPoint[] }) {
@@ -35,15 +35,15 @@ export function CashflowChart({ data }: { data: CashflowPoint[] }) {
       <AreaChart data={data} margin={{ left: 4, right: 8, top: 8 }}>
         <defs>
           <linearGradient id="fill-income" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-income)" stopOpacity={0.25} />
-            <stop offset="100%" stopColor="var(--color-income)" stopOpacity={0.02} />
+            <stop offset="0%" stopColor="var(--color-income)" stopOpacity={0.12} />
+            <stop offset="100%" stopColor="var(--color-income)" stopOpacity={0.01} />
           </linearGradient>
           <linearGradient id="fill-spending" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-spending)" stopOpacity={0.25} />
-            <stop offset="100%" stopColor="var(--color-spending)" stopOpacity={0.02} />
+            <stop offset="0%" stopColor="var(--color-spending)" stopOpacity={0.12} />
+            <stop offset="100%" stopColor="var(--color-spending)" stopOpacity={0.01} />
           </linearGradient>
         </defs>
-        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+        <CartesianGrid vertical={false} strokeDasharray="3 3" strokeOpacity={0.5} />
         <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
         <YAxis
           width={48}
@@ -90,7 +90,7 @@ export function SpendingBars({ data }: { data: SpendingSlice[] }) {
   return (
     <ChartContainer id="spending" config={spendingConfig} className="aspect-auto h-[240px] w-full">
       <BarChart data={rows} layout="vertical" margin={{ left: 12, right: 16 }}>
-        <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+        <CartesianGrid horizontal={false} strokeDasharray="3 3" strokeOpacity={0.5} />
         <XAxis type="number" hide />
         <YAxis
           type="category"
@@ -119,23 +119,53 @@ export function SpendingBars({ data }: { data: SpendingSlice[] }) {
 
 /* ------------------------------------------------ balance history sparkline */
 
-const balanceConfig = {
-  balance: { label: "Balance", color: "var(--chart-1)" },
-} satisfies ChartConfig;
+/**
+ * Hand-authored inline SVG — no recharts. Keeps the accounts list / detail
+ * header / dashboard account cards off the recharts chunk entirely. Inherits
+ * `currentColor`, so it themes for free.
+ */
+export function BalanceSparkline({
+  history,
+  className,
+  height = 56,
+}: {
+  history: number[];
+  className?: string;
+  height?: number;
+}) {
+  if (!history || history.length < 2) return null;
+  const W = 300;
+  const H = height;
+  const pad = 2;
+  const min = Math.min(...history);
+  const max = Math.max(...history);
+  const span = max - min || 1;
+  const step = (W - pad * 2) / (history.length - 1);
+  const pts = history.map((v, i) => {
+    const x = pad + i * step;
+    const y = pad + (H - pad * 2) * (1 - (v - min) / span);
+    return `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
+  });
+  const up = history[history.length - 1]! >= history[0]!;
 
-export function BalanceSparkline({ history }: { history: number[] }) {
-  const data = history.map((v, i) => ({ i, balance: v }));
   return (
-    <ChartContainer id="balance" config={balanceConfig} className="aspect-auto h-14 w-full">
-      <LineChart data={data} margin={{ top: 4, bottom: 4, left: 0, right: 0 }}>
-        <Line
-          dataKey="balance"
-          type="monotone"
-          stroke="var(--color-balance)"
-          strokeWidth={2}
-          dot={false}
-        />
-      </LineChart>
-    </ChartContainer>
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className={className ?? "h-14 w-full"}
+      preserveAspectRatio="none"
+      role="img"
+      aria-label={`Balance trend, ${up ? "up" : "down"} over the last ${history.length} points`}
+    >
+      <path
+        d={pts.join(" ")}
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity={0.55}
+        strokeWidth={1.25}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
   );
 }

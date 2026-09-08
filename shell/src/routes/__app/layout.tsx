@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { Link, Outlet, useLoaderData, useLocation } from "@modern-js/runtime/router";
+import { Helmet } from "@modern-js/runtime/head";
 import {
   SidebarInset,
   SidebarProvider,
@@ -37,7 +38,7 @@ const LABELS: Record<string, string> = {
 };
 
 export default function AppLayout() {
-  const { user } = useLoaderData() as AppLayoutData;
+  const { user, remoteOrigins } = useLoaderData() as AppLayoutData;
   const { pathname } = useLocation();
   const segments = pathname.split("/").filter(Boolean);
   // Upgrade federated <a href> / GET <form> to client-side navigation.
@@ -45,6 +46,11 @@ export default function AppLayout() {
 
   return (
     <SidebarProvider>
+      <Helmet>
+        {remoteOrigins.map((o) => (
+          <link key={o} rel="preconnect" href={o} crossOrigin="anonymous" />
+        ))}
+      </Helmet>
       <NavProgress />
       <AppSidebar />
       <SidebarInset>

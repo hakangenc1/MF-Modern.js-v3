@@ -1,4 +1,4 @@
-import { Globe } from "lucide-react";
+import { Globe, Loader2 } from "lucide-react";
 import { formatDateTime, relativeTime, type SessionEntry } from "@/mock";
 import {
   Card,
@@ -22,11 +22,12 @@ import { PageHeader } from "@/components/patterns/kit";
 export default function SessionsView({
   sessions,
   onRevoke,
-  pending = false,
+  pendingId = null,
 }: {
   sessions: SessionEntry[];
   onRevoke: (id: string) => void;
-  pending?: boolean;
+  /** id of the session currently being ended (spinner on that row only). */
+  pendingId?: string | null;
 }) {
   return (
     <>
@@ -79,9 +80,12 @@ export default function SessionsView({
                       <Button
                         variant="ghost"
                         size="sm"
-                        disabled={pending}
+                        disabled={pendingId === s.id}
                         onClick={() => onRevoke(s.id)}
                       >
+                        {pendingId === s.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : null}
                         End session
                       </Button>
                     )}

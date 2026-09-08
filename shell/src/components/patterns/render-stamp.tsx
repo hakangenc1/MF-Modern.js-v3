@@ -57,13 +57,13 @@ export function RenderStamp() {
   };
 
   const badgeClass =
-    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent";
+    "inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground";
   const badgeInner = (
     <>
       {isServer ? (
-        <Server className="size-3 text-[color:var(--pos)]" />
+        <Server className="size-3" />
       ) : (
-        <MonitorSmartphone className="size-3 text-[color:var(--chart-2)]" />
+        <MonitorSmartphone className="size-3" />
       )}
       {isServer ? "SSR" : "CSR"}
       {(isServer ? server?.at : mounted ? clientAt : null) ? (

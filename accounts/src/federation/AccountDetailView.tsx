@@ -1,4 +1,4 @@
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Loader2, Search } from "lucide-react";
 import {
   formatCurrency,
   formatDate,
@@ -8,6 +8,7 @@ import {
   type Transaction,
   type TransactionCategory,
 } from "@/mock";
+import { cn } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -48,16 +49,22 @@ const CATEGORIES: (TransactionCategory | "all")[] = [
  * Account detail — presentational and router-free. The shell (which owns
  * routing) drives navigation via the plain links / GET form here, and streams
  * the transaction table into `children`.
+ *
+ * `pendingHref` is the URL the shell's router is currently navigating to — a
+ * filter control spins on *itself* when it matches, and the results area dims,
+ * with no page-wide loading treatment.
  */
 export default function AccountDetailView({
   account,
   category,
   search,
+  pendingHref,
   children,
 }: {
   account: Account;
   category: string;
   search: string;
+  pendingHref?: string | null;
   children: React.ReactNode;
 }) {
   const isCredit = account.type === "credit";
@@ -69,6 +76,8 @@ export default function AccountDetailView({
     const qs = p.toString();
     return qs ? `${base}?${qs}` : base;
   };
+  const filtering = !!pendingHref && pendingHref.startsWith(base);
+  const searchPending = filtering && pendingHref.includes("q=") !== !!search;
 
   return (
     <>
@@ -155,7 +164,11 @@ export default function AccountDetailView({
             <CardDescription>Filter by category or search a merchant</CardDescription>
           </div>
           <form method="get" action={base} className="relative max-w-xs">
-            <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+            {searchPending ? (
+              <Loader2 className="pointer-events-none absolute left-2.5 top-2.5 size-4 animate-spin text-muted-foreground" />
+            ) : (
+              <Search className="pointer-events-none absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+            )}
             {category && category !== "all" ? (
               <input type="hidden" name="category" value={category} />
             ) : null}
@@ -167,16 +180,31 @@ export default function AccountDetailView({
             />
           </form>
           <div className="flex flex-wrap gap-1.5">
-            {CATEGORIES.map((c) => (
-              <a key={c} href={hrefFor(c)}>
-                <Badge variant={category === c ? "default" : "outline"} className="cursor-pointer">
-                  {c === "all" ? "All" : c}
-                </Badge>
-              </a>
-            ))}
+            {CATEGORIES.map((c) => {
+              const active = category === c || (c === "all" && category === "all");
+              const pending = hrefFor(c) === pendingHref;
+              return (
+                <a key={c} href={hrefFor(c)} aria-disabled={pending || undefined}>
+                  <Badge
+                    variant={active ? "default" : "outline"}
+                    className="cursor-pointer gap-1"
+                  >
+                    {pending ? <Loader2 className="size-3 animate-spin" /> : null}
+                    {c === "all" ? "All" : c}
+                  </Badge>
+                </a>
+              );
+            })}
           </div>
         </CardHeader>
-        <CardContent>{children}</CardContent>
+        <CardContent>
+          <div
+            aria-busy={filtering || undefined}
+            className={cn("transition-opacity", filtering && "opacity-60")}
+          >
+            {children}
+          </div>
+        </CardContent>
       </Card>
     </>
   );
@@ -188,11 +216,13 @@ export function TransactionsTable({
   base,
   category,
   search,
+  pendingHref,
 }: {
   page: Page<Transaction>;
   base: string;
   category: string;
   search: string;
+  pendingHref?: string | null;
 }) {
   if (!page.items.length) {
     return (
@@ -205,6 +235,8 @@ export function TransactionsTable({
   if (category && category !== "all") more.set("category", category);
   if (search) more.set("q", search);
   if (page.nextCursor) more.set("cursor", page.nextCursor);
+  const moreHref = `${base}?${more}`;
+  const morePending = moreHref === pendingHref;
 
   return (
     <>
@@ -246,8 +278,11 @@ export function TransactionsTable({
           Showing {page.items.length} of {page.total}
         </span>
         {page.nextCursor ? (
-          <Button asChild variant="outline" size="sm">
-            <a href={`${base}?${more}`}>Load more</a>
+          <Button asChild variant="outline" size="sm" aria-disabled={morePending || undefined}>
+            <a href={moreHref}>
+              {morePending ? <Loader2 className="size-4 animate-spin" /> : null}
+              Load more
+            </a>
           </Button>
         ) : null}
       </div>

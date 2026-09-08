@@ -1,16 +1,16 @@
-import { useActionData, useLoaderData, useNavigation, useSubmit } from "@modern-js/runtime/router";
+import { useFetcher, useLoaderData } from "@modern-js/runtime/router";
 import SessionsView from "@/federation/SessionsView";
 import type { SessionEntry } from "@/mock";
 export default function Page() {
   const { sessions } = useLoaderData() as { sessions: SessionEntry[] };
-  const actionData = useActionData() as { sessions?: SessionEntry[] } | undefined;
-  const submit = useSubmit();
-  const nav = useNavigation();
+  const fetcher = useFetcher<{ sessions?: SessionEntry[] }>();
+  const pendingId =
+    fetcher.state !== "idle" ? (fetcher.formData?.get("id") as string | null) : null;
   return (
     <SessionsView
-      sessions={actionData?.sessions ?? sessions}
-      pending={nav.state !== "idle"}
-      onRevoke={(id) => submit({ id }, { method: "post" })}
+      sessions={fetcher.data?.sessions ?? sessions}
+      pendingId={pendingId}
+      onRevoke={(id) => fetcher.submit({ id }, { method: "post" })}
     />
   );
 }

@@ -6,16 +6,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { formatCurrency, formatPercent, type Account, type AccountType } from "@/mock";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Money, PageHeader } from "@/components/patterns/kit";
+import { Money, PageHeader, StatTile } from "@/components/patterns/kit";
 import { BalanceSparkline } from "@/components/patterns/charts";
 import type { AccountsListData } from "./data";
 
@@ -49,10 +41,19 @@ export default function AccountsView({ data }: { data: AccountsListData }) {
         description="Every balance across your Northwind relationship, updated in real time."
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <SummaryCard label="Net worth" value={formatCurrency(netWorth.total)} accent />
-        <SummaryCard label="Total assets" value={formatCurrency(netWorth.assets)} />
-        <SummaryCard label="Total liabilities" value={formatCurrency(netWorth.liabilities)} />
+      <div className="mt-6 grid grid-cols-2 gap-4 rounded-xl border bg-card p-5 sm:grid-cols-4">
+        <StatTile label="Net worth" value={formatCurrency(netWorth.total)} />
+        <StatTile label="Total assets" value={formatCurrency(netWorth.assets)} />
+        <StatTile label="Total liabilities" value={formatCurrency(netWorth.liabilities)} />
+        <StatTile
+          label="This quarter"
+          value={
+            <span style={{ color: netWorth.change >= 0 ? "var(--pos)" : "var(--neg)" }}>
+              {formatCurrency(netWorth.change, { sign: true, compact: true })}
+            </span>
+          }
+          hint={`${formatPercent(netWorth.changePct)} change`}
+        />
       </div>
 
       <div className="mt-8 space-y-8">
@@ -62,10 +63,10 @@ export default function AccountsView({ data }: { data: AccountsListData }) {
           return (
             <section key={type} className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                <h2 className="text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
                   {label}
                 </h2>
-                <span className="text-sm text-muted-foreground tabular-nums">
+                <span className="text-sm tabular-nums text-muted-foreground">
                   {formatCurrency(group.reduce((s, a) => s + a.balance, 0))}
                 </span>
               </div>
@@ -82,59 +83,45 @@ export default function AccountsView({ data }: { data: AccountsListData }) {
   );
 }
 
-function SummaryCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <Card className={accent ? "border-primary/30 bg-primary/[0.03]" : undefined}>
-      <CardHeader className="pb-2">
-        <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-2xl font-semibold tabular-nums">{value}</CardTitle>
-      </CardHeader>
-    </Card>
-  );
-}
-
 function AccountTile({ account }: { account: Account }) {
   const Icon = ICON[account.type];
   const isCredit = account.type === "credit";
   return (
     <a href={`/accounts/${account.id}`} className="group block">
-      <Card className="h-full transition-colors group-hover:border-primary/40">
-        <CardHeader className="pb-2">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-                <Icon className="size-4" />
-              </div>
-              <div>
-                <CardTitle className="text-sm font-medium">{account.name}</CardTitle>
-                <CardDescription className="font-mono text-xs">{account.mask}</CardDescription>
-              </div>
+      <div className="h-full rounded-xl border bg-card p-4 transition-colors group-hover:border-foreground/20">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+              <Icon className="size-4" />
             </div>
-            <ArrowUpRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-end justify-between">
             <div>
-              <p className="text-xs text-muted-foreground">
-                {isCredit ? "Current balance" : "Available"}
-              </p>
-              <Money
-                cents={isCredit ? account.balance : account.available}
-                colorize={isCredit}
-                className="text-xl font-semibold"
-              />
+              <p className="text-sm font-medium">{account.name}</p>
+              <p className="font-mono text-xs text-muted-foreground">{account.mask}</p>
             </div>
-            {account.apy ? (
-              <Badge variant="secondary">{formatPercent(account.apy)} APY</Badge>
-            ) : isCredit && account.creditLimit ? (
-              <Badge variant="outline">{formatCurrency(account.creditLimit)} limit</Badge>
-            ) : null}
           </div>
-          <Separator />
-          <BalanceSparkline history={account.history} />
-        </CardContent>
-      </Card>
+          <ArrowUpRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+        </div>
+        <div className="mt-3 flex items-end justify-between">
+          <div>
+            <p className="text-xs text-muted-foreground">
+              {isCredit ? "Current balance" : "Available"}
+            </p>
+            <Money
+              cents={isCredit ? account.balance : account.available}
+              colorize={isCredit}
+              className="text-xl font-semibold"
+            />
+          </div>
+          {account.apy ? (
+            <Badge variant="secondary">{formatPercent(account.apy)} APY</Badge>
+          ) : isCredit && account.creditLimit ? (
+            <Badge variant="outline">{formatCurrency(account.creditLimit)} limit</Badge>
+          ) : null}
+        </div>
+        <div className="mt-3 border-t pt-3 text-muted-foreground">
+          <BalanceSparkline history={account.history} height={40} />
+        </div>
+      </div>
     </a>
   );
 }

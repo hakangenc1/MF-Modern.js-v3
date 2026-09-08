@@ -1,21 +1,29 @@
-import { useActionData, useLoaderData, useNavigation, useSubmit } from "@modern-js/runtime/router";
+import { useFetcher, useLoaderData } from "@modern-js/runtime/router";
 import { Helmet } from "@modern-js/runtime/head";
 import TwoFactorView from "security/TwoFactorView";
+
 export default function Page() {
   const { overview } = useLoaderData() as any;
-  const actionData = useActionData() as any;
-  const submit = useSubmit();
-  const nav = useNavigation();
-  return (<><Helmet><title>Two-factor auth · Northwind Bank</title></Helmet>
-    <TwoFactorView
-      overview={actionData?.overview ?? overview}
-      pending={nav.state !== "idle"}
-      verifyResult={actionData?.verifyResult}
-      recoveryCodes={actionData?.recoveryCodes}
-      actions={{
-        onToggle: (e: boolean) => submit({ intent: "toggle", enabled: String(e) }, { method: "post" }),
-        onRegenerate: () => submit({ intent: "regenerate" }, { method: "post" }),
-        onVerify: (c: string) => submit({ intent: "verify", code: c }, { method: "post" }),
-      }}
-    /></>);
+  const fetcher = useFetcher<any>();
+  const data = fetcher.data as any;
+  const pendingIntent =
+    fetcher.state !== "idle" ? (fetcher.formData?.get("intent") as string | null) : null;
+  return (
+    <>
+      <Helmet><title>Two-factor auth · Northwind Bank</title></Helmet>
+      <TwoFactorView
+        overview={data?.overview ?? overview}
+        pendingIntent={pendingIntent}
+        verifyResult={data?.verifyResult}
+        recoveryCodes={data?.recoveryCodes}
+        actions={{
+          onToggle: (e: boolean) =>
+            fetcher.submit({ intent: "toggle", enabled: String(e) }, { method: "post" }),
+          onRegenerate: () => fetcher.submit({ intent: "regenerate" }, { method: "post" }),
+          onVerify: (c: string) =>
+            fetcher.submit({ intent: "verify", code: c }, { method: "post" }),
+        }}
+      />
+    </>
+  );
 }

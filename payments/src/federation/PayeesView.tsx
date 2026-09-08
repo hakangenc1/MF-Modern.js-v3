@@ -1,12 +1,5 @@
 import { Building2, Send, Star } from "lucide-react";
 import { formatDate, relativeTime, type Payee } from "@/mock";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/patterns/kit";
@@ -22,7 +15,7 @@ export default function PayeesView({ payees }: { payees: Payee[] }) {
         title="Payees"
         description="People and businesses you can pay in a couple of taps."
         actions={
-          <Button asChild>
+          <Button asChild size="sm">
             <a href="/payments">
               <Send className="size-4" /> Send money
             </a>
@@ -31,8 +24,8 @@ export default function PayeesView({ payees }: { payees: Payee[] }) {
       />
 
       {favorites.length ? (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <section className="mt-6 space-y-3">
+          <h2 className="text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
             Favorites
           </h2>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -44,7 +37,7 @@ export default function PayeesView({ payees }: { payees: Payee[] }) {
       ) : null}
 
       <section className="mt-8 space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
           All payees
         </h2>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -59,28 +52,24 @@ export default function PayeesView({ payees }: { payees: Payee[] }) {
 
 function PayeeCard({ payee }: { payee: Payee }) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-              <Building2 className="size-4" />
-            </div>
-            <div>
-              <CardTitle className="flex items-center gap-1.5 text-sm font-medium">
-                {payee.name}
-                {payee.favorite ? (
-                  <Star className="size-3 fill-[color:var(--warning)] text-[color:var(--warning)]" />
-                ) : null}
-              </CardTitle>
-              <CardDescription className="text-xs">
-                {payee.bank} · <span className="font-mono">{payee.accountMask}</span>
-              </CardDescription>
-            </div>
-          </div>
+    <div className="rounded-xl border bg-card p-4">
+      <div className="flex items-start gap-2.5">
+        <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+          <Building2 className="size-4" />
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <span className="truncate">{payee.name}</span>
+            {payee.favorite ? (
+              <Star className="size-3 shrink-0 fill-[color:var(--warning)] text-[color:var(--warning)]" />
+            ) : null}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {payee.bank} · <span className="font-mono">{payee.accountMask}</span>
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 space-y-3">
         {payee.reference ? (
           <Badge variant="outline" className="font-normal">
             {payee.reference}
@@ -94,7 +83,7 @@ function PayeeCard({ payee }: { payee: Payee }) {
         <Button asChild variant="outline" size="sm" className="w-full">
           <a href="/payments">Pay {payee.name.split(" ")[0]}</a>
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

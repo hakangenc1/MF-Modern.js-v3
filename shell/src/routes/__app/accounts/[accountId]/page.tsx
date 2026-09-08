@@ -4,6 +4,7 @@ import { Helmet } from "@modern-js/runtime/head";
 import type { Account, Page as MockPage, Transaction } from "@/mock";
 import AccountDetailView, { TransactionsTable } from "accounts/AccountDetailView";
 import { TableSkeleton } from "@/components/patterns/skeletons";
+import { usePendingHref } from "@/components/patterns/pending";
 
 interface Data {
   account: Account | null;
@@ -15,6 +16,7 @@ interface Data {
 export default function AccountDetailPage() {
   const data = useLoaderData() as Data;
   const { account, category, search } = data;
+  const pendingHref = usePendingHref();
 
   return (
     <>
@@ -22,7 +24,12 @@ export default function AccountDetailPage() {
         <title>{account ? `${account.name} · Northwind Bank` : "Account · Northwind Bank"}</title>
       </Helmet>
       {account ? (
-        <AccountDetailView account={account} category={category} search={search}>
+        <AccountDetailView
+          account={account}
+          category={category}
+          search={search}
+          pendingHref={pendingHref}
+        >
           <Suspense fallback={<TableSkeleton rows={10} cols={5} />}>
             <Await resolve={data.transactions}>
               {(page: MockPage<Transaction>) => (
@@ -31,6 +38,7 @@ export default function AccountDetailPage() {
                   base={`/accounts/${account.id}`}
                   category={category}
                   search={search}
+                  pendingHref={pendingHref}
                 />
               )}
             </Await>

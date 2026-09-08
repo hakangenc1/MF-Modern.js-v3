@@ -7,6 +7,7 @@ import {
   CreditCard,
   PiggyBank,
   Plus,
+  TrendingDown,
   TrendingUp,
 } from "lucide-react";
 import {
@@ -20,17 +21,10 @@ import {
   type SpendingSlice,
   type Transaction,
 } from "@/mock";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { PageHeader, Money } from "@/components/patterns/kit";
+import { PageHeader, Money, StatTile, SectionCard } from "@/components/patterns/kit";
+import { BalanceSparkline } from "@/components/patterns/charts";
 import { ActivityListSkeleton, ChartSkeleton } from "@/components/patterns/skeletons";
 import { CashflowCard, RecentActivityCard, SpendingCard } from "accounts/widgets";
 import { QuickTransferCard } from "payments/QuickTransferCard";
@@ -60,22 +54,33 @@ export default function Dashboard() {
   const { heading, today, netWorth, accounts, payees, security, cashflow, spending, activity } =
     useLoaderData() as DashboardData;
 
+  // Net-worth trend: sum every account's balance history point-by-point.
+  const len = Math.min(...accounts.map((a) => a.history.length));
+  const netWorthHistory = Array.from({ length: len }, (_, i) =>
+    accounts.reduce((s, a) => s + (a.history[i] ?? 0), 0),
+  );
+  const up = netWorth.change >= 0;
+
   return (
     <>
       <Helmet>
         <title>Overview · Northwind Bank</title>
+        <meta
+          name="description"
+          content="Your Northwind Bank overview — net worth, accounts, recent activity and security status."
+        />
       </Helmet>
       <PageHeader
         title={heading}
         description={today}
         actions={
           <>
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" size="sm">
               <Link to="/accounts">
                 <ArrowUpRight className="size-4" /> All accounts
               </Link>
             </Button>
-            <Button asChild>
+            <Button asChild size="sm">
               <Link to="/payments">
                 <Plus className="size-4" /> New transfer
               </Link>
@@ -84,44 +89,50 @@ export default function Dashboard() {
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardDescription>Total net worth</CardDescription>
-            <CardTitle className="text-4xl font-semibold tracking-tight">
-              <Money cents={netWorth.total} />
-            </CardTitle>
-            <div className="flex items-center gap-2 text-sm">
-              <Badge variant="secondary" className="gap-1 text-[color:var(--pos)]">
-                <ArrowUpRight className="size-3" />
-                {formatCurrency(netWorth.change, { sign: true, compact: true })}
-              </Badge>
-              <span className="text-muted-foreground">
-                {formatPercent(netWorth.changePct)} this quarter
-              </span>
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <SectionCard className="lg:col-span-2" bodyClassName="space-y-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Total net worth</p>
+              <Money cents={netWorth.total} className="block text-3xl font-semibold tracking-tight" />
+              <div className="flex items-center gap-2 text-sm">
+                <span
+                  className="inline-flex items-center gap-1 font-medium tabular-nums"
+                  style={{ color: up ? "var(--pos)" : "var(--neg)" }}
+                >
+                  {up ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
+                  {formatCurrency(netWorth.change, { sign: true, compact: true })}
+                </span>
+                <span className="text-muted-foreground">
+                  {formatPercent(netWorth.changePct)} this quarter
+                </span>
+              </div>
             </div>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Stat label="Assets" value={formatCurrency(netWorth.assets, { compact: true })} />
-            <Stat
+            <div className="w-full max-w-[220px] text-muted-foreground">
+              <BalanceSparkline history={netWorthHistory} height={48} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 border-t pt-4 sm:grid-cols-4">
+            <StatTile label="Assets" value={formatCurrency(netWorth.assets, { compact: true })} />
+            <StatTile
               label="Liabilities"
               value={formatCurrency(netWorth.liabilities, { compact: true })}
             />
-            <Stat label="Accounts" value={String(accounts.length)} />
-            <Stat label="Payees" value={String(payees.length)} />
-          </CardContent>
-        </Card>
+            <StatTile label="Accounts" value={String(accounts.length)} />
+            <StatTile label="Payees" value={String(payees.length)} />
+          </div>
+        </SectionCard>
 
         <QuickTransferCard payees={payees} />
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {accounts.map((account) => (
           <AccountCard key={account.id} account={account} />
         ))}
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <div className="mt-4 grid gap-4 lg:grid-cols-3 cv-auto">
         <div className="lg:col-span-2">
           <Suspense fallback={<CardShell title="Cash flow"><ChartSkeleton /></CardShell>}>
             <Await resolve={cashflow}>{(d) => <CashflowCard data={d} />}</Await>
@@ -132,7 +143,7 @@ export default function Dashboard() {
         </Suspense>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <div className="mt-4 grid gap-4 lg:grid-cols-3 cv-auto">
         <div className="lg:col-span-2">
           <Suspense
             fallback={<CardShell title="Recent activity"><ActivityListSkeleton /></CardShell>}
@@ -148,21 +159,9 @@ export default function Dashboard() {
 
 function CardShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-lg font-semibold tabular-nums">{value}</p>
-    </div>
+    <SectionCard title={title}>
+      {children}
+    </SectionCard>
   );
 }
 
@@ -170,35 +169,30 @@ function AccountCard({ account }: { account: Account }) {
   const Icon = ACCOUNT_ICON[account.type];
   return (
     <Link to={`/accounts/${account.id}`} className="group">
-      <Card className="transition-colors group-hover:border-primary/40">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex size-8 items-center justify-center rounded-md bg-muted">
-              <Icon className="size-4" />
-            </div>
-            <Badge variant="outline" className="text-[10px] uppercase">
-              {account.type}
-            </Badge>
+      <div className="h-full rounded-xl border bg-card p-4 transition-colors group-hover:border-foreground/20">
+        <div className="flex items-center justify-between">
+          <div className="flex size-8 items-center justify-center rounded-md bg-muted">
+            <Icon className="size-4" />
           </div>
-          <CardTitle className="pt-2 text-sm font-medium">{account.name}</CardTitle>
-          <CardDescription className="font-mono text-xs">{account.mask}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Money
-            cents={account.balance}
-            colorize={account.type === "credit"}
-            className="text-xl font-semibold"
-          />
-          <Separator className="my-2" />
-          <p className="text-xs text-muted-foreground">
-            {account.type === "credit"
-              ? `${formatCurrency(account.available)} available`
-              : account.apy
-                ? `${formatPercent(account.apy)} APY`
-                : `${formatCurrency(account.available)} available`}
-          </p>
-        </CardContent>
-      </Card>
+          <Badge variant="outline" className="text-[10px] uppercase">
+            {account.type}
+          </Badge>
+        </div>
+        <p className="mt-3 truncate text-sm font-medium">{account.name}</p>
+        <p className="font-mono text-xs text-muted-foreground">{account.mask}</p>
+        <Money
+          cents={account.balance}
+          colorize={account.type === "credit"}
+          className="mt-2 block text-lg font-semibold"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          {account.type === "credit"
+            ? `${formatCurrency(account.available)} available`
+            : account.apy
+              ? `${formatPercent(account.apy)} APY`
+              : `${formatCurrency(account.available)} available`}
+        </p>
+      </div>
     </Link>
   );
 }
