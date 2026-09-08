@@ -18,20 +18,33 @@ const ICON: Record<AccountType, React.ComponentType<{ className?: string }>> = {
   investment: TrendingUp,
 };
 
-const GROUPS: { type: AccountType; label: string }[] = [
-  { type: "checking", label: "Cash" },
-  { type: "savings", label: "Savings" },
-  { type: "credit", label: "Credit" },
-  { type: "investment", label: "Investments" },
-];
+const LABEL: Record<AccountType, string> = {
+  checking: "Cash",
+  savings: "Savings",
+  credit: "Credit",
+  investment: "Investment",
+};
+
+// Display order — same-type accounts stay adjacent in the flat grid.
+const ORDER: AccountType[] = ["checking", "savings", "credit", "investment"];
 
 /**
  * Accounts list — a presentational component owned by the Accounts
  * micro-frontend. Router-free (plain anchors) so it renders identically whether
- * mounted standalone or federated into the shell's SSR stream.
+ * mounted standalone or federated into the shell's SSR stream. `children` is an
+ * optional streamed slot (the shell puts recent activity here).
  */
-export default function AccountsView({ data }: { data: AccountsListData }) {
+export default function AccountsView({
+  data,
+  children,
+}: {
+  data: AccountsListData;
+  children?: React.ReactNode;
+}) {
   const { accounts, netWorth } = data;
+  const sorted = [...accounts].sort(
+    (a, b) => ORDER.indexOf(a.type) - ORDER.indexOf(b.type),
+  );
 
   return (
     <>
@@ -56,31 +69,26 @@ export default function AccountsView({ data }: { data: AccountsListData }) {
         />
       </div>
 
-      <div className="mt-8 space-y-8">
-        {GROUPS.map(({ type, label }) => {
-          const group = accounts.filter((a) => a.type === type);
-          if (!group.length) return null;
-          return (
-            <section key={type} className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {label}
-                </h2>
-                <span className="text-sm tabular-nums text-muted-foreground">
-                  {formatCurrency(group.reduce((s, a) => s + a.balance, 0))}
-                </span>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {group.map((account) => (
-                  <AccountTile key={account.id} account={account} />
-                ))}
-              </div>
-            </section>
-          );
-        })}
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {sorted.map((account) => (
+          <AccountTile key={account.id} account={account} />
+        ))}
       </div>
+
+      {children ? <div className="mt-6">{children}</div> : null}
     </>
   );
+}
+
+function secondaryLine(account: Account): string {
+  if (account.type === "credit") {
+    const limit = account.creditLimit ? ` of ${formatCurrency(account.creditLimit)}` : "";
+    return `${formatCurrency(account.available)} available${limit}`;
+  }
+  if (account.apy) {
+    return `${formatPercent(account.apy)} APY · ${formatCurrency(account.available)} available`;
+  }
+  return `${formatCurrency(account.available)} available`;
 }
 
 function AccountTile({ account }: { account: Account }) {
@@ -88,38 +96,35 @@ function AccountTile({ account }: { account: Account }) {
   const isCredit = account.type === "credit";
   return (
     <a href={`/accounts/${account.id}`} className="group block">
-      <div className="h-full rounded-xl border bg-card p-4 transition-colors group-hover:border-foreground/20">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-              <Icon className="size-4" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">{account.name}</p>
-              <p className="font-mono text-xs text-muted-foreground">{account.mask}</p>
-            </div>
+      <div className="flex h-full flex-col gap-3 rounded-xl border bg-card p-4 transition-colors group-hover:border-foreground/25">
+        <div className="flex items-center justify-between">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+            <Icon className="size-4" />
           </div>
-          <ArrowUpRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+          <Badge variant="outline" className="text-[10px] uppercase">
+            {LABEL[account.type]}
+          </Badge>
         </div>
-        <div className="mt-3 flex items-end justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground">
-              {isCredit ? "Current balance" : "Available"}
-            </p>
-            <Money
-              cents={isCredit ? account.balance : account.available}
-              colorize={isCredit}
-              className="text-xl font-semibold"
-            />
+
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{account.nickname || account.name}</p>
+          <p className="font-mono text-xs text-muted-foreground">{account.mask}</p>
+        </div>
+
+        <div>
+          <Money
+            cents={isCredit ? account.balance : account.available}
+            colorize={isCredit}
+            className="block text-xl font-semibold tracking-tight"
+          />
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{secondaryLine(account)}</p>
+        </div>
+
+        <div className="mt-auto flex items-end justify-between gap-2 border-t pt-3 text-muted-foreground">
+          <div className="min-w-0 flex-1">
+            <BalanceSparkline history={account.history} height={32} />
           </div>
-          {account.apy ? (
-            <Badge variant="secondary">{formatPercent(account.apy)} APY</Badge>
-          ) : isCredit && account.creditLimit ? (
-            <Badge variant="outline">{formatCurrency(account.creditLimit)} limit</Badge>
-          ) : null}
-        </div>
-        <div className="mt-3 border-t pt-3 text-muted-foreground">
-          <BalanceSparkline history={account.history} height={40} />
+          <ArrowUpRight className="size-4 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
         </div>
       </div>
     </a>

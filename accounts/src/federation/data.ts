@@ -147,3 +147,8 @@ export function loadDashboardWidgets(): DashboardWidgetData {
     activity: getRecentActivity(6),
   };
 }
+
+/** Recent transactions across every account — the /accounts page streams this. */
+export function loadRecentActivity(limit = 8): Promise<Transaction[]> {
+  return getRecentActivity(limit);
+}
