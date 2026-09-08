@@ -49,8 +49,9 @@ Open **http://localhost:3000** → any email + password → 2FA code **`123456`*
 | `npm run install:all` | `pnpm install` in each app |
 | `npm run dev` | clears caches, boots the 3 remotes one‑by‑one, then the shell (refuses to start if a previous run is still on :3000‑:3003) |
 | `npm run stop` | kill a lost `dev`/`start` run whose terminal is gone but whose ports are still held |
-| `npm run build` | `modern build` in each app |
-| `npm run start` | `modern serve` in each app (production) |
+| `npm run build` | `modern build` in each app → `dist/` |
+| `npm run deploy` | `modern deploy` in each app → `.output/` (self‑contained server) |
+| `npm run start` | run each app's `.output/index.js` (production; deploys first if needed) |
 | `npm run typecheck` | `tsc --noEmit` in each app |
 | `npm run init:git` | turn each app into its own git repository |
 
@@ -106,11 +107,14 @@ Every app pins the same Module Federation version matrix via `pnpm.overrides` in
 
 ## Known limitations
 
-- **Production** (`modern serve`) doesn't serve the SSR remote‑entry at
-  `/bundles/static/remoteEntry.js`, so cross‑app SSR federation works in **dev**
-  (`npm run dev`) but not a plain prod deploy. Fix: a static middleware for
-  `<remote>/dist/bundles/static/` (`@module-federation/modern-js-v3` ships `staticServePlugin`
-  for this but it currently panics at build time with this Modern.js version).
+- **Production** uses `modern deploy` → `node .output/index` per app (`npm run start`), not
+  `modern serve`. `modern deploy` wires `@module-federation/modern-js-v3`'s
+  `staticServePlugin`, so cross‑app **SSR federation works in production** — see
+  [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). The plugin's middleware has two bugs (a Windows
+  `path.join` and a byte‑vs‑string `Content-Length`); the fix is vendored as
+  `<app>/patches/@module-federation__modern-js-v3@2.8.2.patch` and applied by `pnpm install`.
+  The app‑level `serve` script (`modern serve`) is a quick preview only and does **not**
+  serve the SSR remote entry — federated regions fall back to CSR there.
 - Modern.js 3.5's client data layer doesn't follow redirects returned from route
   **actions** (only loaders); the auth actions return `{ next }` + `Set-Cookie` and the
   component navigates.

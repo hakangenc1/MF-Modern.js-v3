@@ -7,6 +7,8 @@
     "dev": "modern dev",
     "build": "modern build",
     "serve": "modern serve",
+    "deploy": "modern deploy",
+    "start": "node .output/index",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit"
   },
@@ -71,6 +73,9 @@
       "@module-federation/rspack": "2.8.2",
       "react": "18.3.1",
       "react-dom": "18.3.1"
+    },
+    "patchedDependencies": {
+      "@module-federation/modern-js-v3@2.8.2": "patches/@module-federation__modern-js-v3@2.8.2.patch"
     }
   },
   "browserslist": [

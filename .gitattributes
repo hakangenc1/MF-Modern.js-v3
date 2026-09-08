@@ -1,0 +1,10 @@
+# pnpm applies patch files with a strict line-by-line match — they must stay LF
+# on every platform or `pnpm install` fails to apply them on a fresh clone.
+*.patch text eol=lf
+pnpm-lock.yaml text eol=lf
+
+# Keep scripts and configs LF so Windows checkouts don't churn them.
+*.mjs text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
+*.md text eol=lf

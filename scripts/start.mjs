@@ -1,18 +1,38 @@
-// Production orchestrator — `modern serve` per app.
-// NOTE: cross-app SSR federation needs the SSR remote-entry served at
-// /bundles/static/ ; see README "Production" for the caveat.
-import { spawn } from "node:child_process";
+// Production orchestrator.
+//
+// Each app is served from its `modern deploy` output (`.output/index.js`) — a
+// self-contained Node server that bundles its own runtime deps. This is the
+// path that serves the SSR remote entry (`/bundles/static/*`) correctly, so
+// cross-app SSR federation works here, not only in `npm run dev`.
+//
+// The app-level `serve` script (`modern serve`) is a quick preview only and
+// does NOT serve the SSR remote entry — use `npm run start`, or deploy for real.
+import { spawn, spawnSync } from "node:child_process";
 import http from "node:http";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { APPS, ROOT, PM, PM_ENV, RESET } from "./apps.mjs";
 
 const children = [];
-const run = (app) => {
-  const child = spawn(`${PM} serve`, {
+
+// `.output/` comes from `modern deploy`. Build it if missing; run `npm run build`
+// or delete `.output` to force a fresh package.
+const ensureBuilt = (app) => {
+  if (existsSync(join(ROOT, app.name, ".output", "index.js"))) return;
+  console.log(`${app.color}[${app.name}]${RESET} no .output — running \`modern deploy\`…`);
+  const r = spawnSync(PM, ["run", "deploy"], {
     cwd: join(ROOT, app.name),
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: "inherit",
     shell: true,
-    env: { ...process.env, ...PM_ENV, NODE_ENV: "production", FORCE_COLOR: "1", PORT: String(app.port) },
+    env: { ...process.env, ...PM_ENV, NODE_ENV: "production" },
+  });
+  if (r.status !== 0) process.exit(r.status ?? 1);
+};
+
+const run = (app) => {
+  const child = spawn(process.execPath, [join(ROOT, app.name, ".output", "index.js")], {
+    stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, NODE_ENV: "production", FORCE_COLOR: "1", PORT: String(app.port) },
   });
   const prefix = `${app.color}[${app.name}]${RESET} `;
   child.stdout.on("data", (d) => process.stdout.write(prefix + d));
@@ -34,6 +54,14 @@ const shutdown = () => {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
+if (!process.env.SESSION_SECRET) {
+  console.log(
+    "\n  note: SESSION_SECRET / *_ORIGIN are unset — using localhost + demo defaults.\n" +
+      "  Set them to mirror a real deployment. See docs/DEPLOYMENT.md.\n",
+  );
+}
+
+for (const app of APPS) ensureBuilt(app);
 for (const app of APPS.filter((a) => a.remote)) run(app);
 for (let i = 0; i < 60; i++) {
   if ((await Promise.all(APPS.filter((a) => a.remote).map((a) => ping(a.port)))).every(Boolean)) break;

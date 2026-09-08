@@ -1,9 +1,19 @@
 // One-off: writes a standalone package.json into each app.
-import { writeFileSync } from "node:fs";
+import { writeFileSync, copyFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+// Local fix for @module-federation/modern-js-v3 2.8.2's production SSR static
+// middleware: it used path.join("/", "/bundles") (→ "\bundles" on Windows, so
+// the SSR remote entry is never matched) and set Content-Length from the JS
+// string length instead of the UTF-8 byte length (→ truncated chunks →
+// "Unexpected token" when the shell evaluates a remote). See patches/.
+const PATCH = "@module-federation__modern-js-v3@2.8.2.patch";
+const patchedDependencies = {
+  "@module-federation/modern-js-v3@2.8.2": `patches/${PATCH}`,
+};
 
 const common = {
   "@modern-js/runtime": "3.5.0",
@@ -83,12 +93,14 @@ for (const app of ["shell", "accounts", "payments", "security"]) {
       dev: "modern dev",
       build: "modern build",
       serve: "modern serve",
+      deploy: "modern deploy",
+      start: "node .output/index",
       typecheck: "tsc --noEmit",
       lint: "tsc --noEmit",
     },
     dependencies: sortObj(common),
     devDependencies: sortObj(devCommon),
-    pnpm: { overrides },
+    pnpm: { overrides, patchedDependencies },
     // Modern evergreen target — lets Rspack/SWC skip legacy transpilation.
     browserslist: [
       "chrome >= 100",
@@ -99,5 +111,7 @@ for (const app of ["shell", "accounts", "payments", "security"]) {
     ],
   };
   writeFileSync(join(root, app, "package.json"), JSON.stringify(pkg, null, 2) + "\n");
-  console.log(`wrote ${app}/package.json`);
+  mkdirSync(join(root, app, "patches"), { recursive: true });
+  copyFileSync(join(root, "patches", PATCH), join(root, app, "patches", PATCH));
+  console.log(`wrote ${app}/package.json + patches/${PATCH}`);
 }

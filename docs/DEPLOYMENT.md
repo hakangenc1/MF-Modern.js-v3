@@ -47,21 +47,48 @@ git commit -m "chore: consolidate the four apps into this repo (monorepo layout)
 git push origin main
 ```
 
-The root `.gitignore` already excludes `node_modules`, `dist`, `.modern-js`, `*.log` at any
-depth, so the subfolders are covered. **Commit each app's `pnpm-lock.yaml`** — the builds
-use `--frozen-lockfile`.
+The root `.gitignore` already excludes `node_modules`, `dist`, `.output`, `.modern-js`,
+`*.log` at any depth, so the subfolders are covered. **Commit each app's `pnpm-lock.yaml`
+and its `patches/` folder** (next section) — the builds use `--frozen-lockfile`.
 
 > Prefer four repos instead? Create four empty GitHub repos, then in each app:
 > `git remote set-url origin <that repo>` and `git push`. The root repo then keeps only
 > `scripts/`, `docs/`, `README.md`. Skip to [§4](#4-pick-a-host) — everything else is the
 > same, just per-repo.
 
+### 1b. The federation patch (already applied — just don't drop it)
+
+Each app carries `patches/@module-federation__modern-js-v3@2.8.2.patch`, referenced from its
+`package.json` under `pnpm.patchedDependencies`. `pnpm install` applies it automatically.
+It fixes two bugs in the plugin's production SSR static middleware that otherwise break
+every deploy:
+
+1. `path.join("/", "/bundles")` returns `\bundles` on Windows, so the SSR remote entry is
+   never matched and the shell gets an HTML page instead of JS →
+   `Failed to load Node.js entry … Unexpected token '<'`.
+2. `Content-Length` was set from the JS string length, not the UTF-8 byte length, so any
+   remote chunk containing a non-ASCII byte was **truncated** on the wire →
+   `Unexpected token '}'` when the shell evaluates it. (This one bites Linux too.)
+
+If you regenerate `package.json` with `scripts/gen-package-json.mjs`, it re-copies the patch
+and re-adds the reference. Don't hand-remove it.
+
 ---
 
 ## 2. What you are deploying
 
-Four long-lived Node processes. Each one is `install → build → serve` (`modern serve`,
-which is an HTTP server, not a static export).
+Four long-lived Node processes. Each one is **`install → build → deploy → run`**:
+
+| Step | Command | Produces |
+|---|---|---|
+| build | `modern build` (`npm run build` at the root) | `dist/` |
+| package | `modern deploy` (`pnpm run deploy` in an app) | `.output/` — a self-contained server that bundles its own runtime deps |
+| run | `node .output/index` (`pnpm run start` in an app) | the HTTP server on `$PORT` |
+
+`modern deploy` is the one that matters for federation: it wires each remote's server to
+serve its **SSR remote entry** (`/bundles/static/*`), which is what lets the shell
+server-render federated regions. `modern serve` is a quick preview and does **not** do
+this — don't use it as your production server.
 
 ```mermaid
 flowchart LR
@@ -87,7 +114,7 @@ its own public URL (`assetPrefix`).
 
 | Variable | shell | accounts | payments | security | Value |
 |---|:--:|:--:|:--:|:--:|---|
-| `PORT` | ✓ | ✓ | ✓ | ✓ | Injected by the host. `modern serve` binds it. |
+| `PORT` | ✓ | ✓ | ✓ | ✓ | Injected by the host. `node .output/index` binds it. |
 | `SHELL_ORIGIN` | ✓ | | | | Public URL of the shell, e.g. `https://northwind.example`. |
 | `ACCOUNTS_ORIGIN` | ✓ | ✓ | | | Public URL of the accounts service. Shell uses it to build the manifest URL; accounts uses it as its own `assetPrefix`. |
 | `PAYMENTS_ORIGIN` | ✓ | | ✓ | | …same, payments. |
@@ -106,35 +133,33 @@ Do this before touching a cloud platform — it catches 90% of deploy failures o
 machine.
 
 ```bash
-# from the repo root
-npm run build          # modern build in all four apps → dist/ each
+# from the repo root — package all four (→ .output/ each; runs modern build too)
+npm run deploy
 
-# serve all four the way production will, with the wiring set explicitly
+# run all four from their .output/, with the wiring set explicitly
 SESSION_SECRET=$(openssl rand -hex 32) \
 SHELL_ORIGIN=http://localhost:3000 \
 ACCOUNTS_ORIGIN=http://localhost:3001 \
 PAYMENTS_ORIGIN=http://localhost:3002 \
 SECURITY_ORIGIN=http://localhost:3003 \
-npm run start          # modern serve in all four
+npm run start
 ```
 
-Open `http://localhost:3000`, sign in (any email + password, 2FA `123456`), and click
-through every menu. Then verify SSR:
+`npm run start` runs each app's `.output/index.js` (and runs `modern deploy` first for any
+app that has no `.output/` yet). Open `http://localhost:3000`, sign in (any email +
+password, 2FA `123456`), and click through every menu.
+
+Verify SSR **including the federated regions** — view source on `/` and confirm the
+dashboard's federated widgets are in the HTML:
 
 ```bash
-# should print real account names / numbers in the HTML, not an empty <div>
-curl -s http://localhost:3000/ -H "cookie: $(curl -s -i -X POST http://localhost:3000/login/verify ... )" | grep -o "Everyday Checking"
+curl -s http://localhost:3000/ -H "cookie: <a valid bank_session>" | grep -o "Recent activity"
 ```
 
-(Easier: open DevTools → Network → the document response → confirm the markup contains
-`$128,032.02` etc.)
-
-> **Known caveat, expected here too:** in `modern serve` the *federated* regions
-> (dashboard widgets, transfer form) render **client-side**, not in the streamed HTML —
-> `modern serve` doesn't serve the SSR remote entry. The pages work; the federated blocks
-> just aren't server-rendered. Full SSR federation only runs under `npm run dev`. See
-> [§7](#7-the-production-ssr-federation-caveat). If the *non-federated* shell content
-> (sidebar, header, `/cards`) is server-rendered and auth works, the build is good.
+(Easier: DevTools → Network → the document response → the markup contains `$128,032.02`,
+`Everyday Checking`, transaction rows, *and* the quick-transfer card — not just the shell
+chrome.) If a federated block is missing from the HTML, the patch in [§1b](#1b-the-federation-patch-already-applied--just-dont-drop-it)
+isn't applied — `pnpm install` in that app and rebuild.
 
 Windows PowerShell equivalent for the env vars:
 
@@ -173,9 +198,11 @@ Create the **remotes first**, then the shell (the shell needs their URLs).
 2. **Root Directory**: `accounts` (resp. `payments`, `security`).
 3. **Runtime**: Node. **Build Command**:
    ```
-   corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm build
+   corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm run deploy
    ```
-4. **Start Command**: `corepack pnpm serve`
+   (`pnpm run deploy` → `modern deploy`. Not bare `pnpm deploy`, which is a different
+   built-in pnpm command.)
+4. **Start Command**: `node .output/index`
 5. **Environment** →
    - `SESSION_SECRET` — same value for accounts + security (payments doesn't need it, but
      setting it everywhere is harmless). Use Render's "Generate" once, then paste the same
@@ -217,8 +244,8 @@ services:
     runtime: node
     rootDir: accounts
     plan: starter
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm build
-    startCommand: corepack pnpm serve
+    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm run deploy
+    startCommand: node .output/index
     envVars:
       - fromGroup: northwind-shared
       - key: ACCOUNTS_ORIGIN
@@ -229,8 +256,8 @@ services:
     runtime: node
     rootDir: payments
     plan: starter
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm build
-    startCommand: corepack pnpm serve
+    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm run deploy
+    startCommand: node .output/index
     envVars:
       - fromGroup: northwind-shared
       - key: PAYMENTS_ORIGIN
@@ -241,8 +268,8 @@ services:
     runtime: node
     rootDir: security
     plan: starter
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm build
-    startCommand: corepack pnpm serve
+    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm run deploy
+    startCommand: node .output/index
     envVars:
       - fromGroup: northwind-shared
       - key: SECURITY_ORIGIN
@@ -253,8 +280,8 @@ services:
     runtime: node
     rootDir: shell
     plan: starter
-    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm build
-    startCommand: corepack pnpm serve
+    buildCommand: corepack enable && corepack pnpm install --frozen-lockfile && corepack pnpm run deploy
+    startCommand: node .output/index
     envVars:
       - fromGroup: northwind-shared
       - key: SHELL_ORIGIN
@@ -278,29 +305,34 @@ Add this `Dockerfile` to **each** app folder (`shell/`, `accounts/`, `payments/`
 `security/`):
 
 ```dockerfile
-FROM node:20-alpine
+# ---- build ----
+FROM node:20-alpine AS build
 WORKDIR /app
 RUN corepack enable
-
-# deps first — cached unless the lockfile changes
 COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 RUN corepack pnpm install --frozen-lockfile
-
-# source + build
 COPY . .
-RUN corepack pnpm build
+RUN corepack pnpm run deploy          # → .output/ (self-contained server)
 
+# ---- run ----
+FROM node:20-alpine AS run
+WORKDIR /app
 ENV NODE_ENV=production
-# the platform sets PORT; modern serve binds it. EXPOSE is documentation only.
+COPY --from=build /app/.output ./.output
 EXPOSE 3000
-CMD ["corepack", "pnpm", "serve"]
+CMD ["node", ".output/index"]
 ```
+
+`.output/` bundles its own runtime dependencies, so the run stage needs no `pnpm install`
+and no `node_modules` — just Node and the folder.
 
 And a `.dockerignore` next to each:
 
 ```
 node_modules
 dist
+.output
 .modern-js
 *.log
 ```
@@ -346,51 +378,33 @@ services:
 
 ---
 
-## 7. The production SSR-federation caveat
+## 7. SSR federation in production — how it works
 
-`modern serve` serves each app's **client** assets from `dist/static/` but does **not**
-serve the **SSR** remote entry at `dist/bundles/static/`. Effect on a plain production
-deploy: the shell can't server-render the federated regions, so **dashboard widgets, the
-transfer form, and the security cards render client-side** (a brief skeleton, then
-content). Everything works; those blocks just aren't in the first HTML. The shell's own
-content (chrome, routing, `/cards`, auth) is fully SSR.
+`modern deploy` wires `@module-federation/modern-js-v3`'s `staticServePlugin` into each
+app's `.output/index.js`. That plugin serves the **SSR remote entry** and its chunks from
+`.output/bundles/static/*` at `<origin>/bundles/*`. The flow per request:
 
-If you need those regions server-rendered in production, add a static route to each
-remote's server for its SSR bundle directory. The lightest fix is a
-`server/modern.server.ts` middleware in each remote:
-
-```ts
-// <remote>/server/modern.server.ts
-import type { MiddlewareHandler } from "@modern-js/server-runtime";
-import { existsSync, createReadStream } from "node:fs";
-import { join, extname } from "node:path";
-
-const TYPES: Record<string, string> = {
-  ".js": "text/javascript", ".json": "application/json", ".css": "text/css",
-};
-
-// serve dist/bundles/static/* at /bundles/static/*  (the SSR remote entry + manifest)
-export const middleware: MiddlewareHandler = async (c, next) => {
-  const p = c.req.path;
-  if (p.startsWith("/bundles/static/")) {
-    const file = join(process.cwd(), "dist", p);
-    if (existsSync(file)) {
-      c.header("content-type", TYPES[extname(file)] ?? "application/octet-stream");
-      c.header("cache-control", "public, max-age=31536000, immutable");
-      return c.body(createReadStream(file) as any);
-    }
-  }
-  return next();
-};
+```mermaid
+sequenceDiagram
+    participant Sh as shell (.output server)
+    participant Ac as accounts (.output server)
+    Sh->>Ac: GET /static/mf-manifest.json
+    Ac-->>Sh: { ssrRemoteEntry, ssrPublicPath: "<origin>/bundles/" }
+    Sh->>Ac: GET /bundles/static/remoteEntry.js   (Node/CJS build)
+    Ac-->>Sh: JS  ← staticServePlugin, not the page handler
+    Sh->>Ac: GET /bundles/<exposed-chunk>.js
+    Ac-->>Sh: JS
+    Note over Sh: evaluates ./widgets, ./AccountsView … renders them into the stream
 ```
 
-Then point the shell's SSR manifest lookup at `/bundles/static/mf-manifest.json` for each
-remote (env-switch on `NODE_ENV`). Re-test with the [§3](#3-dry-run-locally-in-production-mode)
-dry run — `curl` the dashboard and confirm the widget markup is now in the response.
+So on a normal `node .output/index` deploy the federated regions **are** server-rendered —
+view source on `/` shows the real widget markup, not a skeleton. The only prerequisite is
+the [§1b](#1b-the-federation-patch-already-applied--just-dont-drop-it) patch (the stock
+plugin's middleware is broken); it's already in the repo.
 
-Track upstream: `@module-federation/modern-js-v3` ships a `staticServePlugin` intended for
-exactly this; it currently panics at build time with Modern.js 3.5, so the middleware above
-is the interim.
+`modern serve` (the app-level `serve` script) is the exception — it does **not** run this
+plugin, so federated regions fall back to client rendering there. That's a preview-tool
+limitation, not a deploy one. Use `node .output/index` / `npm run start`.
 
 ---
 
@@ -447,7 +461,7 @@ jobs:
       - run: corepack enable
       - run: corepack pnpm install --frozen-lockfile
         working-directory: ${{ matrix.app }}
-      - run: corepack pnpm typecheck && corepack pnpm build
+      - run: corepack pnpm run typecheck && corepack pnpm run deploy
         working-directory: ${{ matrix.app }}
 ```
 
