@@ -121,6 +121,7 @@ its own public URL (`assetPrefix`).
 | `SECURITY_ORIGIN` | ✓ | | | ✓ | …same, security. |
 | `SESSION_SECRET` | ✓ | ✓ | | ✓ | HMAC key for the session cookie. **Must be identical** on shell, accounts, security. Generate 32+ random bytes. |
 | `MODERN_MF_AUTO_CORS` | ✓ | ✓ | ✓ | ✓ | Set to `true`. Makes each remote send `Access-Control-Allow-Origin: *` on its manifest / `remoteEntry.js` / chunks so the **browser** can fetch them cross-origin — required for client-side federation and SPA navigation. Without it every page load logs `blocked by CORS policy` and in-app navigation dies. |
+| `MODERNJS_DEPLOY` | ✓ | ✓ | ✓ | ✓ | Set to `node`. Render auto-injects `MODERNJS_DEPLOY=render`, which this Modern.js version rejects (`Unknown deploy target: 'render'`) — `modern deploy` only accepts `node` / `vercel` / `netlify`. Pin it to `node`. (Harmless off-Render.) |
 
 Every `*_ORIGIN` must be a full origin with scheme and **no trailing slash**:
 `https://northwind-accounts.onrender.com`. Without it a remote falls back to
@@ -216,6 +217,7 @@ Create the **remotes first**, then the shell (the shell needs their URLs).
 4. **Start Command**: `node .output/index`
 5. **Environment** →
    - `MODERN_MF_AUTO_CORS` = `true`
+   - `MODERNJS_DEPLOY` = `node`
    - `SESSION_SECRET` — same value for accounts + security (payments doesn't need it, but
      setting it everywhere is harmless). Use Render's "Generate" once, then paste the same
      value into the others.
@@ -231,6 +233,7 @@ Create the **remotes first**, then the shell (the shell needs their URLs).
 2. Build / Start commands: identical to above.
 3. **Environment**:
    - `MODERN_MF_AUTO_CORS` = `true`
+   - `MODERNJS_DEPLOY` = `node`
    - `SESSION_SECRET` — the **same** value as accounts + security.
    - `ACCOUNTS_ORIGIN` = `https://northwind-accounts.onrender.com`
    - `PAYMENTS_ORIGIN` = `https://northwind-payments.onrender.com`
@@ -252,6 +255,8 @@ envVarGroups:
         generateValue: true          # one value, shared by every service below
       - key: MODERN_MF_AUTO_CORS
         value: "true"                # remotes send CORS headers for browser-side federation
+      - key: MODERNJS_DEPLOY
+        value: "node"                # override Render's auto-injected MODERNJS_DEPLOY=render
 
 services:
   - type: web
@@ -323,6 +328,7 @@ Add this `Dockerfile` to **each** app folder (`shell/`, `accounts/`, `payments/`
 # ---- build ----
 FROM node:20-alpine AS build
 WORKDIR /app
+ENV MODERNJS_DEPLOY=node
 RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
 COPY patches ./patches
