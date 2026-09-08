@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { ArrowRight, CheckCircle2, Send } from "lucide-react";
+import { lazy, Suspense, useEffect, useState, type ComponentType } from "react";
+import { ArrowRight, CheckCircle2, Loader2, Send } from "lucide-react";
 import { formatCurrency, type Transfer } from "@/mock";
 import {
   Card,
@@ -30,9 +30,24 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, Money } from "@/components/patterns/kit";
-import { TwoFactorChallenge } from "twofactor/TwoFactorChallenge";
-import { verifyCode } from "twofactor/data";
 import type { TransferContext } from "./data";
+
+type ChallengeProps = {
+  title?: string;
+  description?: string;
+  pending?: boolean;
+  error?: string | null;
+  onSubmit: (code: string) => void;
+};
+
+// The 2FA widget is only needed once the user clicks "Confirm & send" — long
+// after hydration. Loading it lazily keeps it out of the initial chunk graph so
+// it can't update the route's Suspense boundary mid-hydration (React #421).
+const TwoFactorChallenge = lazy(() =>
+  import("twofactor/TwoFactorChallenge").then((m) => ({
+    default: m.TwoFactorChallenge as ComponentType<ChallengeProps>,
+  })),
+);
 
 export interface TransferValues {
   fromAccountId: string;
@@ -92,6 +107,7 @@ export default function TransferView({
   const handleVerify = async (code: string) => {
     setVerifying(true);
     setVerifyError(null);
+    const { verifyCode } = await import("twofactor/data");
     const res = await verifyCode(code);
     setVerifying(false);
     if (res.ok) {
@@ -243,13 +259,21 @@ export default function TransferView({
                   from your authenticator.
                 </DialogDescription>
               </DialogHeader>
-              <TwoFactorChallenge
-                title="Authorize transfer"
-                description="Enter your 6-digit authenticator code to send this payment."
-                pending={verifying || pending}
-                error={verifyError}
-                onSubmit={handleVerify}
-              />
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" /> Loading verification…
+                  </div>
+                }
+              >
+                <TwoFactorChallenge
+                  title="Authorize transfer"
+                  description="Enter your 6-digit authenticator code to send this payment."
+                  pending={verifying || pending}
+                  error={verifyError}
+                  onSubmit={handleVerify}
+                />
+              </Suspense>
               <DialogFooter>
                 <Button
                   variant="ghost"
