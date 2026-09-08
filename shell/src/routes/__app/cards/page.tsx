@@ -129,7 +129,7 @@ function CardPanel({ card: initial }: { card: BankCard }) {
             {formatCurrency(card.monthlySpent)} / {formatCurrency(card.monthlyLimit)}
           </button>
         </div>
-        <Progress value={pct} />
+        <Progress value={pct} aria-label={`${card.name} monthly spend: ${pct}% of limit`} />
       </div>
 
       <div className="flex items-center justify-between rounded-lg border p-3">

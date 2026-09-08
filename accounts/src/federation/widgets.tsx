@@ -59,7 +59,10 @@ export function BudgetSummaryCard({
         <span className="text-2xl font-semibold tabular-nums">{formatCurrency(totalSpent)}</span>
         <span className="text-sm text-muted-foreground">of {formatCurrency(totalLimit)}</span>
       </div>
-      <Progress value={Math.min(100, pct)} />
+      <Progress
+        value={Math.min(100, pct)}
+        aria-label={`Monthly budget used: ${pct}% of ${formatCurrency(totalLimit)}`}
+      />
       <ul className="space-y-1.5 text-sm">
         {top.map((r) => (
           <li key={r.category} className="flex items-center justify-between">
@@ -85,7 +88,7 @@ export function SavingsGoalCard({ goal }: { goal: SavingsGoal }) {
         <span className="text-2xl font-semibold tabular-nums">{formatCurrency(goal.saved)}</span>
         <span className="text-sm text-muted-foreground">of {formatCurrency(goal.target)}</span>
       </div>
-      <Progress value={pct} />
+      <Progress value={pct} aria-label={`${goal.name} savings goal: ${pct}% funded`} />
       <p className="text-xs text-muted-foreground">{pct}% funded · target {goal.targetDate}</p>
       <Button asChild variant="outline" size="sm" className="w-full">
         <a href="/budgets">Add to goal</a>

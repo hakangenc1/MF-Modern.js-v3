@@ -14,6 +14,9 @@ x-app-env: &app-env
   MODERN_MF_AUTO_CORS: "true"
   MODERNJS_DEPLOY: "node"
   SESSION_SECRET: "${SESSION_SECRET:?set SESSION_SECRET in deploy/.env}"
+  # Scales the mock API's artificial latency (delay.ts). 1 = full demo latency,
+  # 0 = instant. ~0.1 keeps streaming/skeletons visible but pages load fast.
+  MOCK_LATENCY: "${MOCK_LATENCY:-0.1}"
 
 services:
   twofactor:

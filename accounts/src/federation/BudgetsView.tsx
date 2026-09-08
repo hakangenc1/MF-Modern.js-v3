@@ -133,7 +133,11 @@ function BudgetRow({
           </button>
         )}
       </div>
-      <Progress value={Math.min(100, row.pct)} className="mt-2" />
+      <Progress
+        value={Math.min(100, row.pct)}
+        className="mt-2"
+        aria-label={`${row.category} budget: ${row.pct}% of limit spent`}
+      />
       {over ? (
         <p className="mt-1 text-xs text-[color:var(--neg)]">
           {formatCurrency(row.spent - row.monthlyLimit)} over budget
@@ -162,7 +166,7 @@ function GoalRow({
           {formatCurrency(goal.saved)} / {formatCurrency(goal.target)}
         </span>
       </div>
-      <Progress value={pct} className="mt-2" />
+      <Progress value={pct} className="mt-2" aria-label={`${goal.name}: ${pct}% funded`} />
       <div className="mt-3 flex items-end gap-2">
         <div className="grid flex-1 gap-1.5">
           <label className="text-xs text-muted-foreground" htmlFor={`add-${goal.id}`}>

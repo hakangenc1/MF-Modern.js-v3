@@ -49,7 +49,7 @@ export default function SecurityView({
               {band.label}
             </Badge>
           </div>
-          <Progress value={overview.score} />
+          <Progress value={overview.score} aria-label={`Security score: ${overview.score} out of 100`} />
           <div className="grid gap-4 border-t pt-4 sm:grid-cols-3">
             <StatTile
               label="Two-factor"

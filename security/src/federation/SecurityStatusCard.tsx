@@ -18,7 +18,7 @@ export function SecurityStatusCard({ overview }: { overview: SecurityOverview })
         <span className="text-2xl font-semibold tabular-nums">{overview.score}</span>
         <span className="text-sm text-muted-foreground">/ 100</span>
       </div>
-      <Progress value={overview.score} />
+      <Progress value={overview.score} aria-label={`Security score: ${overview.score} out of 100`} />
       <DataList
         rows={[
           {
