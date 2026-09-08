@@ -1,0 +1,126 @@
+# Northwind — single-box deployment (Oracle Cloud Always Free VM).
+#
+#   cp .env.example .env   # then set BASE_DOMAIN + SESSION_SECRET
+#   docker compose up -d --build
+#
+# Caddy terminates TLS for <app>.$BASE_DOMAIN (auto Let's Encrypt) and reverse-
+# proxies to each app container. The five hostnames are also network aliases on
+# the Caddy container, so the shell's server-side federated fetches resolve
+# in-cluster instead of hair-pinning out to the public IP.
+
+name: northwind
+
+x-app-env: &app-env
+  MODERN_MF_AUTO_CORS: "true"
+  MODERNJS_DEPLOY: "node"
+  SESSION_SECRET: "${SESSION_SECRET:?set SESSION_SECRET in deploy/.env}"
+
+services:
+  twofactor:
+    build:
+      context: ../twofactor
+      dockerfile: ../deploy/Dockerfile
+      args:
+        TWOFACTOR_ORIGIN: "https://twofactor.${BASE_DOMAIN:?set BASE_DOMAIN in deploy/.env}"
+    environment:
+      <<: *app-env
+      PORT: "3004"
+      TWOFACTOR_ORIGIN: "https://twofactor.${BASE_DOMAIN}"
+    networks: [web]
+    restart: unless-stopped
+
+  accounts:
+    build:
+      context: ../accounts
+      dockerfile: ../deploy/Dockerfile
+      args:
+        ACCOUNTS_ORIGIN: "https://accounts.${BASE_DOMAIN}"
+    environment:
+      <<: *app-env
+      PORT: "3001"
+      ACCOUNTS_ORIGIN: "https://accounts.${BASE_DOMAIN}"
+    networks: [web]
+    restart: unless-stopped
+
+  payments:
+    build:
+      context: ../payments
+      dockerfile: ../deploy/Dockerfile
+      args:
+        PAYMENTS_ORIGIN: "https://payments.${BASE_DOMAIN}"
+        TWOFACTOR_ORIGIN: "https://twofactor.${BASE_DOMAIN}"
+    environment:
+      <<: *app-env
+      PORT: "3002"
+      PAYMENTS_ORIGIN: "https://payments.${BASE_DOMAIN}"
+      TWOFACTOR_ORIGIN: "https://twofactor.${BASE_DOMAIN}"
+    networks: [web]
+    restart: unless-stopped
+    depends_on: [twofactor]
+
+  security:
+    build:
+      context: ../security
+      dockerfile: ../deploy/Dockerfile
+      args:
+        SECURITY_ORIGIN: "https://security.${BASE_DOMAIN}"
+        TWOFACTOR_ORIGIN: "https://twofactor.${BASE_DOMAIN}"
+    environment:
+      <<: *app-env
+      PORT: "3003"
+      SECURITY_ORIGIN: "https://security.${BASE_DOMAIN}"
+      TWOFACTOR_ORIGIN: "https://twofactor.${BASE_DOMAIN}"
+    networks: [web]
+    restart: unless-stopped
+    depends_on: [twofactor]
+
+  shell:
+    build:
+      context: ../shell
+      dockerfile: ../deploy/Dockerfile
+      args:
+        SHELL_ORIGIN: "https://shell.${BASE_DOMAIN}"
+        ACCOUNTS_ORIGIN: "https://accounts.${BASE_DOMAIN}"
+        PAYMENTS_ORIGIN: "https://payments.${BASE_DOMAIN}"
+        SECURITY_ORIGIN: "https://security.${BASE_DOMAIN}"
+        TWOFACTOR_ORIGIN: "https://twofactor.${BASE_DOMAIN}"
+    environment:
+      <<: *app-env
+      PORT: "3000"
+      SHELL_ORIGIN: "https://shell.${BASE_DOMAIN}"
+      ACCOUNTS_ORIGIN: "https://accounts.${BASE_DOMAIN}"
+      PAYMENTS_ORIGIN: "https://payments.${BASE_DOMAIN}"
+      SECURITY_ORIGIN: "https://security.${BASE_DOMAIN}"
+      TWOFACTOR_ORIGIN: "https://twofactor.${BASE_DOMAIN}"
+    networks: [web]
+    restart: unless-stopped
+    depends_on: [accounts, payments, security, twofactor]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      BASE_DOMAIN: "${BASE_DOMAIN}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      web:
+        aliases:
+          - "shell.${BASE_DOMAIN}"
+          - "accounts.${BASE_DOMAIN}"
+          - "payments.${BASE_DOMAIN}"
+          - "security.${BASE_DOMAIN}"
+          - "twofactor.${BASE_DOMAIN}"
+    depends_on: [shell, accounts, payments, security, twofactor]
+
+networks:
+  web:
+
+volumes:
+  caddy_data:
+  caddy_config:

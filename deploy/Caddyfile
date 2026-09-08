@@ -1,0 +1,34 @@
+# Auto-HTTPS for the five Northwind hosts. Certs (Let's Encrypt) are persisted in
+# the caddy_data volume — don't wipe it or you'll re-hit rate limits.
+#
+# $BASE_DOMAIN comes from the container environment (deploy/.env via compose).
+# To dry-run cert issuance against the LE staging CA, uncomment acme_ca below.
+
+{
+	# acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+(app) {
+	encode zstd gzip
+	reverse_proxy {args[0]}
+}
+
+shell.{$BASE_DOMAIN} {
+	import app shell:3000
+}
+
+accounts.{$BASE_DOMAIN} {
+	import app accounts:3001
+}
+
+payments.{$BASE_DOMAIN} {
+	import app payments:3002
+}
+
+security.{$BASE_DOMAIN} {
+	import app security:3003
+}
+
+twofactor.{$BASE_DOMAIN} {
+	import app twofactor:3004
+}
