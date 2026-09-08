@@ -169,3 +169,57 @@ export function BalanceSparkline({
     </svg>
   );
 }
+
+/* ------------------------------------------------------ net-worth area trend */
+
+/**
+ * A larger filled trend for the dashboard net-worth panel — line + soft area,
+ * hand-authored SVG (no recharts). Stretches to fill its container; inherits
+ * `currentColor` so it themes for free.
+ */
+export function NetWorthTrend({
+  history,
+  className,
+}: {
+  history: number[];
+  className?: string;
+}) {
+  if (!history || history.length < 2) return null;
+  const W = 600;
+  const H = 200;
+  const padY = 8;
+  const min = Math.min(...history);
+  const max = Math.max(...history);
+  const span = max - min || 1;
+  const step = W / (history.length - 1);
+  const pts = history.map((v, i) => {
+    const x = i * step;
+    const y = padY + (H - padY * 2) * (1 - (v - min) / span);
+    return { x, y };
+  });
+  const line = pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const area = `${line} L${W} ${H} L0 ${H} Z`;
+  const up = history[history.length - 1]! >= history[0]!;
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className={className ?? "h-full w-full"}
+      preserveAspectRatio="none"
+      role="img"
+      aria-label={`Net worth trend, ${up ? "up" : "down"} over the last ${history.length} months`}
+    >
+      <path d={area} fill="currentColor" fillOpacity={0.07} stroke="none" />
+      <path
+        d={line}
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity={0.7}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}

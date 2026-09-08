@@ -26,7 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, Money, StatTile, SectionCard } from "@/components/patterns/kit";
-import { BalanceSparkline } from "@/components/patterns/charts";
+import { NetWorthTrend } from "@/components/patterns/charts";
 import { ActivityListSkeleton, ChartSkeleton } from "@/components/patterns/skeletons";
 import {
   BudgetSummaryCard,
@@ -111,29 +111,38 @@ export default function Dashboard() {
       />
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        <SectionCard className="lg:col-span-2" bodyClassName="space-y-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">Total net worth</p>
-              <Money cents={netWorth.total} className="block text-3xl font-semibold tracking-tight" />
-              <div className="flex items-center gap-2 text-sm">
-                <span
-                  className="inline-flex items-center gap-1 font-medium tabular-nums"
-                  style={{ color: up ? "var(--pos)" : "var(--neg)" }}
-                >
-                  {up ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
-                  {formatCurrency(netWorth.change, { sign: true, compact: true })}
-                </span>
-                <span className="text-muted-foreground">
-                  {formatPercent(netWorth.changePct)} this quarter
-                </span>
-              </div>
-            </div>
-            <div className="w-full max-w-[220px] text-muted-foreground">
-              <BalanceSparkline history={netWorthHistory} height={48} />
+        <div className="flex h-full flex-col rounded-xl border bg-card p-5 lg:col-span-2">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">Total net worth</p>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <Money
+                cents={netWorth.total}
+                className="text-3xl font-semibold tracking-tight sm:text-4xl"
+              />
+              <span
+                className="inline-flex items-center gap-1 text-sm font-medium tabular-nums"
+                style={{ color: up ? "var(--pos)" : "var(--neg)" }}
+              >
+                {up ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
+                {formatCurrency(netWorth.change, { sign: true, compact: true })}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {formatPercent(netWorth.changePct)} this quarter
+              </span>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 border-t pt-4 sm:grid-cols-4">
+
+          <div className="my-4 flex flex-1 flex-col">
+            <div className="min-h-[120px] flex-1 text-foreground">
+              <NetWorthTrend history={netWorthHistory} />
+            </div>
+            <div className="mt-1.5 flex justify-between text-[11px] text-muted-foreground">
+              <span>12 months ago</span>
+              <span>Today</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 sm:grid-cols-4">
             <StatTile label="Assets" value={formatCurrency(netWorth.assets, { compact: true })} />
             <StatTile
               label="Liabilities"
@@ -142,7 +151,7 @@ export default function Dashboard() {
             <StatTile label="Accounts" value={String(accounts.length)} />
             <StatTile label="Payees" value={String(payees.length)} />
           </div>
-        </SectionCard>
+        </div>
 
         <QuickTransferCard payees={payees} />
       </div>
