@@ -123,7 +123,7 @@ composing a remote), so it also needs `TWOFACTOR_ORIGIN`.
 | `ACCOUNTS_ORIGIN` | ✓ | ✓ | | | | Public URL of the accounts service. Shell uses it to build the manifest URL; accounts uses it as its own `assetPrefix`. |
 | `PAYMENTS_ORIGIN` | ✓ | | ✓ | | | …same, payments. |
 | `SECURITY_ORIGIN` | ✓ | | | ✓ | | …same, security. |
-| `TWOFACTOR_ORIGIN` | ✓ | | ✓ | | ✓ | …same, twofactor. Both the **shell** (login) and **payments** (transfer) consume it, so both need it. |
+| `TWOFACTOR_ORIGIN` | ✓ | | ✓ | ✓ | ✓ | …same, twofactor. The **shell** (login), **payments** (transfer) and **security** (`/security/two-factor`) all consume it. |
 | `SESSION_SECRET` | ✓ | ✓ | | ✓ | | HMAC key for the session cookie. **Must be identical** on shell, accounts, security. Generate 32+ random bytes. |
 | `MODERN_MF_AUTO_CORS` | ✓ | ✓ | ✓ | ✓ | ✓ | Set to `true`. Makes each remote send `Access-Control-Allow-Origin: *` on its manifest / `remoteEntry.js` / chunks so the **browser** can fetch them cross-origin — required for client-side federation and SPA navigation. Without it every page load logs `blocked by CORS policy` and in-app navigation dies. |
 | `MODERNJS_DEPLOY` | ✓ | ✓ | ✓ | ✓ | ✓ | Set to `node`. Render auto-injects `MODERNJS_DEPLOY=render`, which this Modern.js version rejects (`Unknown deploy target: 'render'`) — `modern deploy` only accepts `node` / `vercel` / `netlify`. Pin it to `node`. (Harmless off-Render.) |
@@ -232,8 +232,9 @@ the shell.
    `https://northwind-accounts.onrender.com`.
 7. Go back to **Environment** and add `<NAME>_ORIGIN` = that URL (no trailing slash).
    Save → it redeploys. Repeat for each remote.
-8. **`payments` also needs** `TWOFACTOR_ORIGIN = https://northwind-twofactor.onrender.com`
-   (it renders the 2FA widget in the transfer flow).
+8. **`payments` and `security` also need**
+   `TWOFACTOR_ORIGIN = https://northwind-twofactor.onrender.com` — both render the 2FA
+   widget (payments in the transfer flow, security on `/security/two-factor`).
 
 **Then the shell:**
 
@@ -303,6 +304,8 @@ services:
     envVars:
       - fromGroup: northwind-shared
       - key: SECURITY_ORIGIN
+        sync: false
+      - key: TWOFACTOR_ORIGIN        # security composes the 2FA widget on /security/two-factor
         sync: false
 
   - type: web
@@ -410,8 +413,12 @@ x-mf: &mf { MODERN_MF_AUTO_CORS: "true", SESSION_SECRET: dev }
 
 services:
   accounts:  { build: ./accounts,  environment: { <<: *mf, PORT: 3001, ACCOUNTS_ORIGIN: "http://localhost:3001" }, ports: ["3001:3001"] }
-  security:  { build: ./security,  environment: { <<: *mf, PORT: 3003, SECURITY_ORIGIN: "http://localhost:3003" }, ports: ["3003:3003"] }
   twofactor: { build: ./twofactor, environment: { <<: *mf, PORT: 3004, TWOFACTOR_ORIGIN: "http://localhost:3004" }, ports: ["3004:3004"] }
+  security:
+    build: ./security
+    environment: { <<: *mf, PORT: 3003, SECURITY_ORIGIN: "http://localhost:3003", TWOFACTOR_ORIGIN: "http://localhost:3004" }
+    ports: ["3003:3003"]
+    depends_on: [twofactor]
   payments:
     build: ./payments
     environment: { <<: *mf, PORT: 3002, PAYMENTS_ORIGIN: "http://localhost:3002", TWOFACTOR_ORIGIN: "http://localhost:3004" }

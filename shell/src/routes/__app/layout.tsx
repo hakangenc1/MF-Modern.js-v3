@@ -21,6 +21,7 @@ import { UserMenu } from "@/components/user-menu";
 import { NotificationBell } from "@/components/notification-bell";
 import { RenderStamp } from "@/components/patterns/render-stamp";
 import { NavProgress, NavTransition } from "@/components/nav-progress";
+import { useSpaNavigation } from "@/components/spa-nav";
 import type { AppLayoutData } from "./layout.data";
 
 const LABELS: Record<string, string> = {
@@ -39,6 +40,8 @@ export default function AppLayout() {
   const { user } = useLoaderData() as AppLayoutData;
   const { pathname } = useLocation();
   const segments = pathname.split("/").filter(Boolean);
+  // Upgrade federated <a href> / GET <form> to client-side navigation.
+  useSpaNavigation();
 
   return (
     <SidebarProvider>

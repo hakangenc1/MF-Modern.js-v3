@@ -1,5 +1,8 @@
 import { createModuleFederationConfig } from "@module-federation/modern-js-v3";
 
+// security composes the twofactor widget on its /security/two-factor page.
+const twofactorOrigin = process.env.TWOFACTOR_ORIGIN ?? "http://localhost:3004";
+
 export default createModuleFederationConfig({
   name: "security",
   dts: false,
@@ -10,9 +13,11 @@ export default createModuleFederationConfig({
     "./TwoFactorView": "./src/federation/TwoFactorView.tsx",
     "./DevicesView": "./src/federation/DevicesView.tsx",
     "./SessionsView": "./src/federation/SessionsView.tsx",
-    "./TwoFactorChallenge": "./src/federation/TwoFactorChallenge.tsx",
     "./SecurityStatusCard": "./src/federation/SecurityStatusCard.tsx",
     "./data": "./src/federation/data.ts",
+  },
+  remotes: {
+    twofactor: `twofactor@${twofactorOrigin}/static/mf-manifest.json`,
   },
   shared: {
     react: { singleton: true, requiredVersion: false },

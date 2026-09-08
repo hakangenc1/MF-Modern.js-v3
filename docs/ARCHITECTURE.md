@@ -58,7 +58,7 @@ kinds of thing from each: plain **async data functions** from `<remote>/data`, w
 calls inside its route loaders, and **router-free view components**, which it renders with
 the resolved data. The remotes never touch routing or navigation — they use `<a href>` and
 GET forms — so a component renders identically standalone or federated into the shell's SSR
-stream. `payments` is itself a host for `twofactor`.
+stream. `payments` and `security` are themselves hosts for `twofactor`.
 
 ```mermaid
 flowchart LR
@@ -81,7 +81,7 @@ flowchart LR
 
     S -- "HTML + hydration" --> B
     S -- "import ./data + ./*View" --> A & P & SEC & TF
-    P -- "import twofactor/TwoFactorChallenge" --> TF
+    P & SEC -- "import twofactor/*" --> TF
     SHARED -.-> S
     SHARED -.-> A & P & SEC & TF
 ```
@@ -97,6 +97,13 @@ Module Federation's `shared` map forces one instance of a package across all app
 shell, and that bootstrap renders its own `<Router>`. The fix is the constraint above:
 remotes ship presentational components only, the shell owns every router hook, loader, and
 `<Suspense>` boundary.
+
+**Keeping it a SPA anyway.** Router-free remotes emit plain `<a href>` and GET `<form>`,
+which would full-reload. One delegated handler in the app layout
+(`shell/src/components/spa-nav.tsx`) catches in-app link clicks and filter submits at
+`document` level and calls `navigate()` — the shell's own `<Link>`s already `preventDefault`
+before the event gets there, so they're untouched. Result: every navigation and every
+filter is client-side, and no remote imports the router.
 
 ---
 
@@ -165,7 +172,7 @@ The remote returns data and markup — never a hook, a route, or a `<Link>`.
 | **accounts** `:3001` | `./data` — loadAccountsList, loadAccountDetail, loadDashboardWidgets<br>`./AccountsView` · `./AccountDetailView`<br>`./widgets` — CashflowCard, SpendingCard, RecentActivityCard | shell: `/` (dashboard)<br>`/accounts`, `/accounts/:id`<br>`/insights` (client-side) |
 | **payments** `:3002` | `./data` — loadTransferContext, loadPayees, loadTransfers, submitTransfer<br>`./TransferView` · `./PayeesView` · `./ActivityView`<br>`./QuickTransferCard` | shell: `/` (quick transfer)<br>`/payments`, `/payments/payees`, `/payments/activity` |
 | **security** `:3003` | `./data` — loadSecurityOverview, loadDevices, loadSessions, setTwoFactorEnabled<br>`./SecurityView` · `./TwoFactorView` · `./DevicesView` · `./SessionsView`<br>`./SecurityStatusCard` | shell: `/` (status card)<br>`/security`, `/security/two-factor`<br>`/security/devices`, `/security/sessions` |
-| **twofactor** `:3004` | `./data` — verifyCode<br>`./TwoFactorChallenge` (inline OTP form)<br>`./TwoFactorDialog` (self-verifying popup)<br>`./TwoFactorGate` (wrap a button so it must pass 2FA) | **shell**: `/login/verify`<br>**payments**: the transfer confirm dialog |
+| **twofactor** `:3004` | `./data` — verifyCode<br>`./TwoFactorChallenge` (inline OTP form)<br>`./TwoFactorDialog` (self-verifying popup)<br>`./TwoFactorGate` (wrap a button so it must pass 2FA) | **shell** `/login/verify`<br>**payments** transfer dialog<br>**security** `/security/two-factor` |
 
 ### Version matrix — pinned in every app's `pnpm.overrides`
 
@@ -316,13 +323,13 @@ flowchart LR
     BR -->|"page request"| CDN
     CDN -->|"SSR page"| SHS
     SHS -. "fetch manifest (server-to-server)" .-> AC & PY & SC & TF
-    PY -. "fetch twofactor manifest" .-> TF
+    PY & SC -. "fetch twofactor manifest" .-> TF
     AC & PY & SC & TF -. "publish hashed /static/ chunks" .-> CDN
 ```
 
 *Solid = browser request path · dashed = server-to-server. The browser only ever talks to
 the shell (through the CDN). The shell resolves the four remote manifests at render time;
-`payments` additionally resolves `twofactor`.*
+`payments` and `security` additionally resolve `twofactor`.*
 
 ### Environment
 
@@ -333,7 +340,7 @@ the shell (through the CDN). The shell resolves the four remote manifests at ren
 | `ACCOUNTS_ORIGIN` | shell + accounts | public URL of the accounts service — manifest URL on the host, `assetPrefix` on the remote |
 | `PAYMENTS_ORIGIN` | shell + payments | … same for payments |
 | `SECURITY_ORIGIN` | shell + security | … same for security |
-| `TWOFACTOR_ORIGIN` | **shell + payments** + twofactor | … same for twofactor — both the shell (login) and payments (transfer) consume it |
+| `TWOFACTOR_ORIGIN` | **shell + payments + security** + twofactor | … consumed by three hosts (login, transfer, 2FA setup page) |
 | `SESSION_SECRET` | shell, accounts, security | HMAC key for the session cookie — must match |
 | `MODERN_MF_AUTO_CORS` | all | `true` — remotes send `Access-Control-Allow-Origin` for browser-side federation |
 | `MODERNJS_DEPLOY` | all | `node` — overrides Render's auto-injected `render` (unsupported by `modern deploy`) |

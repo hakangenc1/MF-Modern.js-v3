@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Copy, KeyRound, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import { formatDate, type SecurityOverview } from "@/mock";
 import {
@@ -12,12 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
 import { PageHeader } from "@/components/patterns/kit";
+// The one 2FA widget — same federated module the shell uses at login and
+// payments uses before a transfer.
+import { TwoFactorChallenge } from "twofactor/TwoFactorChallenge";
 
 export interface TwoFactorActions {
   onToggle: (enabled: boolean) => void;
@@ -38,8 +35,6 @@ export default function TwoFactorView({
   verifyResult?: { ok?: boolean; error?: string } | null;
   recoveryCodes?: string[] | null;
 }) {
-  const [code, setCode] = useState("");
-
   return (
     <>
       <PageHeader
@@ -79,36 +74,19 @@ export default function TwoFactorView({
             </div>
 
             <div className="rounded-lg border p-4">
-              <p className="mb-3 text-sm font-medium">Verify a code</p>
-              <p className="mb-3 text-xs text-muted-foreground">
-                Enter a current 6-digit code to confirm your authenticator is in sync. Demo:
-                <span className="ml-1 font-mono font-medium text-foreground">123456</span>
-              </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <InputOTP maxLength={6} value={code} onChange={setCode}>
-                  <InputOTPGroup>
-                    {[0, 1, 2, 3, 4, 5].map((i) => (
-                      <InputOTPSlot key={i} index={i} />
-                    ))}
-                  </InputOTPGroup>
-                </InputOTP>
-                <Button
-                  size="sm"
-                  disabled={pending || code.length !== 6}
-                  onClick={() => actions.onVerify(code)}
-                >
-                  {pending ? <Loader2 className="size-4 animate-spin" /> : null} Verify
-                </Button>
-              </div>
+              <TwoFactorChallenge
+                title="Verify a code"
+                description="Enter a current 6-digit code to confirm your authenticator is in sync."
+                pending={pending}
+                error={verifyResult?.error}
+                autoFocus={false}
+                onSubmit={actions.onVerify}
+              />
               {verifyResult?.ok ? (
                 <Alert className="mt-3 border-[color:var(--pos)]/40">
                   <AlertDescription className="text-[color:var(--pos)]">
                     Code verified — your authenticator is in sync.
                   </AlertDescription>
-                </Alert>
-              ) : verifyResult?.error ? (
-                <Alert variant="destructive" className="mt-3">
-                  <AlertDescription>{verifyResult.error}</AlertDescription>
                 </Alert>
               ) : null}
             </div>

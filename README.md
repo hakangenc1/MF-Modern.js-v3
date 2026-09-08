@@ -96,9 +96,15 @@ Every app pins the same Module Federation version matrix via `pnpm.overrides` in
   renders the remote's **router‑free** presentational components with the resolved data.
 - Remote components use `<a href>` / GET `<form>` (never router hooks) so they render
   identically standalone or federated into the shell's SSR stream.
-- **A remote can compose another remote.** `payments` declares `twofactor` as its own
-  remote and renders `twofactor/TwoFactorChallenge` inside the transfer confirm dialog. The
-  `shell` also consumes `twofactor` (at `/login/verify`). Both hosts set `TWOFACTOR_ORIGIN`.
+- **One 2FA widget, consumed everywhere.** `twofactor` exposes the challenge/dialog/gate
+  once; the **shell** uses it at `/login/verify`, **payments** inside the transfer confirm
+  dialog, **security** on `/security/two-factor`. A remote composing another remote — each
+  host just sets `TWOFACTOR_ORIGIN` and imports `twofactor/*`. Nothing is re-implemented.
+- **Full SPA — even from router-free remotes.** Federated components emit plain `<a href>`
+  and GET `<form>` (they can't use router hooks). A single delegated handler in the app
+  layout (`shell/src/components/spa-nav.tsx`) upgrades every in-app link click and filter
+  submit to `navigate()`, so the whole app navigates without a page reload and no remote
+  depends on the router.
 - **`useId` under streamed SSR.** Modern.js numbers React's `useId` by streamed‑boundary
   position, so a Radix trigger (Popover / Select / Tabs / DropdownMenu) rendered on the
   server can hydrate with a different generated id — a **dev‑only** `Prop \`aria-controls\`
