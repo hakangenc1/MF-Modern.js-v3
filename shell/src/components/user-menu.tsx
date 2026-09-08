@@ -1,0 +1,69 @@
+import { useEffect, useState } from "react";
+import { Link } from "@modern-js/runtime/router";
+import { CreditCard, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type { User } from "@/mock";
+
+export function UserMenu({ user }: { user: User }) {
+  // Radix menus/popovers/tooltips generate `useId` values whose numbering is
+  // sensitive to Modern.js' streamed SSR boundary layout, which produces
+  // "Prop `id`/`aria-controls` did not match" on hydration. The header's
+  // interactive triggers all do client-only work anyway, so they mount after
+  // hydration behind an identical static trigger.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const trigger = (
+    <Button variant="ghost" className="h-9 gap-2 px-1.5">
+      <Avatar className="size-7">
+        <AvatarFallback className="text-xs">{user.initials}</AvatarFallback>
+      </Avatar>
+      <span className="hidden text-sm font-medium sm:inline">{user.firstName}</span>
+    </Button>
+  );
+
+  if (!mounted) return trigger;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="flex flex-col">
+          <span>{user.name}</span>
+          <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link to="/security">
+            <ShieldCheck className="size-4" /> Security
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/cards">
+            <CreditCard className="size-4" /> Cards
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/security/devices">
+            <UserRound className="size-4" /> Trusted devices
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
+          <Link to="/logout">
+            <LogOut className="size-4" /> Sign out
+          </Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
