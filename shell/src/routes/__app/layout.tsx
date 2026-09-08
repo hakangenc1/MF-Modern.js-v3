@@ -20,6 +20,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/user-menu";
 import { NotificationBell } from "@/components/notification-bell";
 import { RenderStamp } from "@/components/patterns/render-stamp";
+import { NavProgress, NavTransition } from "@/components/nav-progress";
 import type { AppLayoutData } from "./layout.data";
 
 const LABELS: Record<string, string> = {
@@ -41,6 +42,7 @@ export default function AppLayout() {
 
   return (
     <SidebarProvider>
+      <NavProgress />
       <AppSidebar />
       <SidebarInset>
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur">
@@ -88,7 +90,9 @@ export default function AppLayout() {
         </header>
 
         <main className="flex-1 p-4 md:p-6 lg:p-8">
-          <Outlet />
+          <NavTransition>
+            <Outlet />
+          </NavTransition>
         </main>
       </SidebarInset>
     </SidebarProvider>
