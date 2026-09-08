@@ -32,11 +32,15 @@ export default defineConfig({
   },
   html: {
     title: "Northwind Bank",
+    // <html lang> is set at runtime by a Helmet tag in the root layout (this
+    // Modern.js version's html config has no `lang` key).
     // Replace Modern.js's default mobile viewport (it sets user-scalable=no).
     meta: {
       viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
       "color-scheme": "light dark",
       "theme-color": "#0b0b0f",
+      description:
+        "Northwind Bank — accounts, transfers, payees, cards and two-factor security in one dashboard.",
     },
   },
   plugins: [appTools(), moduleFederationPlugin()],
