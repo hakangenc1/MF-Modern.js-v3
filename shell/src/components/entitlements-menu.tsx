@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ALL_ENTITLEMENTS, type Entitlement } from "@/lib/entitlements";
@@ -19,7 +19,10 @@ export function EntitlementsMenu({
   personaDefaults: Entitlement[];
 }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    // non-urgent: let hydration of streamed Suspense boundaries finish first (React #421)
+    startTransition(() => setMounted(true));
+  }, []);
 
   const count = `${current.length}/${ALL_ENTITLEMENTS.length}`;
   const badgeClass =
