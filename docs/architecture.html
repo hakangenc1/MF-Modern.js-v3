@@ -596,11 +596,12 @@
     <p class="eyebrow">Engineering reference &nbsp;·&nbsp; internal</p>
     <h1>Northwind Architecture</h1>
     <p class="lede">
-      A working banking front end split into four independently deployed apps, composed at
+      A working banking front end split into five independently deployed apps, composed at
       request time with Module&nbsp;Federation and server-rendered as one streamed HTML
       response.
     </p>
     <div class="chips">
+      <span class="chip"><b>5 apps</b> · shell + 4 remotes</span>
       <span class="chip"><b>Modern.js</b> 3.5 · Rspack</span>
       <span class="chip"><b>Module Federation</b> 2.8.2</span>
       <span class="chip"><b>React</b> 18.3 · streaming SSR</span>
@@ -646,6 +647,7 @@
           <span class="tag">accounts&nbsp;:3001</span>
           <span class="tag">payments&nbsp;:3002</span>
           <span class="tag">security&nbsp;:3003</span>
+          <span class="tag">twofactor&nbsp;:3004</span>
         </dd>
         <dt>Composition</dt>
         <dd>Module Federation 2.0 &mdash; runtime remotes, shared React singletons, SSR-aware.</dd>
@@ -671,10 +673,12 @@
     <div class="sec-head"><span class="num">02</span><h2>Architecture</h2></div>
     <div class="prose">
       <p>
-        The shell declares the three remotes by their manifest URL. At render time it imports
-        two kinds of thing from each remote: plain <strong>async data functions</strong> from
+        The shell declares the four remotes by their manifest URL. At render time it imports
+        two kinds of thing from each: plain <strong>async data functions</strong> from
         <code>&lt;remote&gt;/data</code>, which it calls inside its route loaders, and
         <strong>router-free view components</strong>, which it renders with the resolved data.
+        <code>payments</code> is itself a host for <code>twofactor</code> &mdash; a remote
+        composing a remote.
         The remotes never touch routing or navigation &mdash; they use <code>&lt;a href&gt;</code>
         and GET forms &mdash; so the same component renders identically whether it is running
         standalone on its own port or federated into the shell's SSR stream.
@@ -905,7 +909,7 @@
           <tr>
             <th>Remote</th>
             <th>Exposes</th>
-            <th>Consumed by (shell route)</th>
+            <th>Consumed by</th>
           </tr>
         </thead>
         <tbody>
@@ -940,15 +944,28 @@
           <tr>
             <td><span class="tag">security</span><br /><span class="mono" style="font-size:0.75rem;color:var(--ink-faint)">:3003</span></td>
             <td>
-              <code>./data</code> &mdash; loadSecurityOverview, loadDevices, loadSessions, verifyCode, setTwoFactorEnabled<br />
+              <code>./data</code> &mdash; loadSecurityOverview, loadDevices, loadSessions, setTwoFactorEnabled<br />
               <code>./SecurityView</code> · <code>./TwoFactorView</code> · <code>./DevicesView</code> · <code>./SessionsView</code><br />
-              <code>./TwoFactorChallenge</code> · <code>./SecurityStatusCard</code>
+              <code>./SecurityStatusCard</code>
             </td>
             <td class="mono" style="font-size:0.8rem">
-              / &nbsp;(status card)<br />
-              /login/verify &nbsp;(2FA)<br />
+              shell: / &nbsp;(status card)<br />
               /security · /security/two-factor<br />
               /security/devices · /security/sessions
+            </td>
+          </tr>
+          <tr>
+            <td><span class="tag">twofactor</span><br /><span class="mono" style="font-size:0.75rem;color:var(--ink-faint)">:3004</span></td>
+            <td>
+              <code>./data</code> &mdash; verifyCode<br />
+              <code>./TwoFactorChallenge</code> &mdash; inline OTP form<br />
+              <code>./TwoFactorDialog</code> &mdash; self-verifying popup<br />
+              <code>./TwoFactorGate</code> &mdash; wrap a button so it must pass 2FA
+            </td>
+            <td class="mono" style="font-size:0.8rem">
+              <b>shell</b>: /login/verify<br />
+              <b>payments</b>: transfer<br />
+              &nbsp;&nbsp;confirm dialog
             </td>
           </tr>
         </tbody>
@@ -1124,7 +1141,7 @@ npm run dev            <span class="c"># → http://localhost:3000</span>
         <thead><tr><th>Command</th><th>Effect</th></tr></thead>
         <tbody>
           <tr><td class="mono">npm run install:all</td><td><code>pnpm install</code> in each app</td></tr>
-          <tr><td class="mono">npm run dev</td><td>serial remote boot, then shell &mdash; aborts if :3000&ndash;:3003 are busy</td></tr>
+          <tr><td class="mono">npm run dev</td><td>serial remote boot, then shell &mdash; aborts if :3000aborts if :3000&ndash;:3003 are busyndash;:3004 are busy</td></tr>
           <tr><td class="mono">npm run stop</td><td>kill a lost dev run whose terminal is gone</td></tr>
           <tr><td class="mono">npm run build</td><td><code>modern build</code> in each app</td></tr>
           <tr><td class="mono">npm run start</td><td><code>modern serve</code> in each app (production)</td></tr>
@@ -1203,7 +1220,7 @@ npm run dev            <span class="c"># → http://localhost:3000</span>
       </svg>
       <figcaption>
         The browser only ever talks to the shell (through the CDN). The shell's server
-        resolves the three remote manifests server-to-server at render time; each app's
+        resolves the four remote manifests server-to-server at render time; each app's
         hashed <code>/static/</code> chunks sit on the edge.
       </figcaption>
     </figure>
@@ -1213,12 +1230,15 @@ npm run dev            <span class="c"># → http://localhost:3000</span>
       <table>
         <thead><tr><th>Variable</th><th>Set on</th><th>Value</th></tr></thead>
         <tbody>
-          <tr><td class="mono">PORT</td><td>all</td><td>listen port (defaults 3000&ndash;3003)</td></tr>
+          <tr><td class="mono">PORT</td><td>all</td><td>listen port (defaults 3000&ndash;3004)</td></tr>
           <tr><td class="mono">SHELL_ORIGIN</td><td>shell</td><td>public base URL for the shell's own assets (or a CDN)</td></tr>
-          <tr><td class="mono">ACCOUNTS_ORIGIN</td><td>shell + accounts</td><td>public URL of the accounts service &mdash; manifest on the shell, <code>assetPrefix</code> on the remote</td></tr>
+          <tr><td class="mono">ACCOUNTS_ORIGIN</td><td>shell + accounts</td><td>public URL of the accounts service &mdash; manifest URL on the host, <code>assetPrefix</code> on the remote</td></tr>
           <tr><td class="mono">PAYMENTS_ORIGIN</td><td>shell + payments</td><td>&hellip; same for payments</td></tr>
           <tr><td class="mono">SECURITY_ORIGIN</td><td>shell + security</td><td>&hellip; same for security</td></tr>
-          <tr><td class="mono">SESSION_SECRET</td><td>all</td><td>HMAC key for the session cookie &mdash; must match across apps</td></tr>
+          <tr><td class="mono">TWOFACTOR_ORIGIN</td><td>shell + payments + twofactor</td><td>&hellip; consumed by two hosts (login &amp; transfer)</td></tr>
+          <tr><td class="mono">SESSION_SECRET</td><td>shell, accounts, security</td><td>HMAC key for the session cookie &mdash; must match</td></tr>
+          <tr><td class="mono">MODERN_MF_AUTO_CORS</td><td>all</td><td><code>true</code> &mdash; remotes send CORS headers for browser-side federation</td></tr>
+          <tr><td class="mono">MODERNJS_DEPLOY</td><td>all</td><td><code>node</code> &mdash; overrides Render's injected <code>render</code></td></tr>
         </tbody>
       </table>
     </div>
@@ -1277,7 +1297,7 @@ npm run dev            <span class="c"># → http://localhost:3000</span>
 <footer>
   <p>
     northwind-mfe/ &nbsp;&mdash;&nbsp; shell&nbsp;:3000 &nbsp;·&nbsp; accounts&nbsp;:3001
-    &nbsp;·&nbsp; payments&nbsp;:3002 &nbsp;·&nbsp; security&nbsp;:3003
+    &nbsp;·&nbsp; payments&nbsp;:3002 &nbsp;·&nbsp; security&nbsp;:3003 &nbsp;·&nbsp; twofactor&nbsp;:3004
   </p>
   <p>
     Modern.js 3.5.0 &nbsp;·&nbsp; React 18.3.1 &nbsp;·&nbsp; @module-federation/modern-js-v3
