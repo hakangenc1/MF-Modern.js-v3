@@ -18,6 +18,16 @@ northwind-mfe/            ← this folder: only orchestration scripts, no code, 
 └── security/    :3003    ← remote. own repo. exposes Security/TwoFactor/Devices/SessionsView, TwoFactorChallenge, data
 ```
 
+## Docs
+
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — how the four apps compose, the
+  streaming-SSR render path, the federation contract, the performance levers, and the
+  deploy topology. Renders on GitHub (Mermaid diagrams).
+- **[docs/architecture.html](docs/architecture.html)** — the same reference as a designed,
+  single-file page; open it in a browser.
+- **[docs/PLAN.md](docs/PLAN.md)** — the original build plan and the dead ends that shaped
+  the stack.
+
 ## Run everything with one command
 
 **Requires Node 18+.** Each app installs with **pnpm 9.15.4**, provisioned automatically

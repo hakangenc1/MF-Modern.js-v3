@@ -1,0 +1,1291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Northwind Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+/>
+</head>
+<body>
+
+<style>
+  :root {
+    /* light — cool institutional neutrals, indigo accent from the app's --primary */
+    --ground: #fbfbfc;
+    --surface: #ffffff;
+    --surface-2: #f4f4f7;
+    --ink: #1b1d24;
+    --ink-dim: #5c616e;
+    --ink-faint: #8b909c;
+    --line: #e5e6ea;
+    --line-strong: #d3d5db;
+    --accent: #5b5bd6;
+    --accent-ink: #4646c4;
+    --ok: #2f8f63;
+    --warn: #a76a1f;
+    --code-bg: #f5f5f8;
+
+    --measure: 68ch;
+    --content: 1080px;
+    --step--1: 0.83rem;
+    --step-0: 1rem;
+    --step-1: 1.19rem;
+    --step-2: 1.5rem;
+    --step-3: 2rem;
+    --step-4: 2.75rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0e0f13;
+      --surface: #16171d;
+      --surface-2: #1c1e26;
+      --ink: #e7e8ec;
+      --ink-dim: #a1a5b0;
+      --ink-faint: #6f7480;
+      --line: #262832;
+      --line-strong: #333642;
+      --accent: #9c9df0;
+      --accent-ink: #b7b8f6;
+      --ok: #57c08a;
+      --warn: #d29a4c;
+      --code-bg: #1b1d25;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0e0f13;
+    --surface: #16171d;
+    --surface-2: #1c1e26;
+    --ink: #e7e8ec;
+    --ink-dim: #a1a5b0;
+    --ink-faint: #6f7480;
+    --line: #262832;
+    --line-strong: #333642;
+    --accent: #9c9df0;
+    --accent-ink: #b7b8f6;
+    --ok: #57c08a;
+    --warn: #d29a4c;
+    --code-bg: #1b1d25;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+      Roboto, sans-serif;
+    font-size: var(--step-0);
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv05", "ss01";
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 26%, transparent);
+  }
+
+  a {
+    color: var(--accent-ink);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+
+  code,
+  kbd,
+  .mono {
+    font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  /* ---------- shell ---------- */
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.7rem clamp(1rem, 4vw, 2.5rem);
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+    font-size: var(--step--1);
+  }
+
+  .topbar__mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .topbar__mark span[aria-hidden] {
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 3px;
+    background: var(--accent);
+  }
+
+  .topbar__nav {
+    margin-left: auto;
+    display: flex;
+    gap: 0.15rem;
+    flex-wrap: wrap;
+  }
+
+  .topbar__nav a {
+    color: var(--ink-dim);
+    text-decoration: none;
+    padding: 0.2rem 0.5rem;
+    border-radius: 5px;
+    font-family: "IBM Plex Mono", monospace;
+  }
+
+  .topbar__nav a:hover {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+
+  main {
+    max-width: var(--content);
+    margin: 0 auto;
+    padding: clamp(2.5rem, 7vw, 5rem) clamp(1rem, 4vw, 2.5rem) 6rem;
+  }
+
+  .prose {
+    max-width: var(--measure);
+  }
+
+  .prose p,
+  .prose ul,
+  .prose ol {
+    margin: 0 0 1.05em;
+  }
+
+  .prose li {
+    margin-bottom: 0.4em;
+  }
+
+  .prose strong {
+    font-weight: 600;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    margin-bottom: 4.5rem;
+  }
+
+  .masthead h1 {
+    font-size: var(--step-4);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    font-weight: 600;
+    margin: 0.4rem 0 0.6rem;
+    text-wrap: balance;
+  }
+
+  .masthead .lede {
+    font-size: var(--step-1);
+    color: var(--ink-dim);
+    max-width: 46ch;
+    margin: 0 0 1.8rem;
+    text-wrap: pretty;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: var(--step--1);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .chip {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.76rem;
+    padding: 0.28rem 0.55rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    color: var(--ink-dim);
+    white-space: nowrap;
+  }
+
+  .chip b {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  /* ---------- sections ---------- */
+
+  section {
+    padding-top: 3.5rem;
+    margin-top: 3.5rem;
+    border-top: 1px solid var(--line);
+    scroll-margin-top: 4rem;
+  }
+
+  section > .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    margin-bottom: 1.6rem;
+  }
+
+  .sec-head .num {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: var(--step--1);
+    color: var(--accent-ink);
+    padding-top: 0.35rem;
+  }
+
+  .sec-head h2 {
+    font-size: var(--step-2);
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-size: var(--step-1);
+    letter-spacing: -0.01em;
+    font-weight: 600;
+    margin: 2.4rem 0 0.8rem;
+  }
+
+  /* ---------- spec list ---------- */
+
+  .spec {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.55rem 1.4rem;
+    margin: 0;
+    padding: 1.2rem 0 0;
+    font-size: var(--step--1);
+  }
+
+  .spec dt {
+    font-family: "IBM Plex Mono", monospace;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.74rem;
+    padding-top: 0.15rem;
+  }
+
+  .spec dd {
+    margin: 0;
+    color: var(--ink);
+  }
+
+  /* ---------- figure ---------- */
+
+  figure {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    overflow-x: auto;
+  }
+
+  figure svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    color: var(--ink);
+    margin: 0 auto;
+  }
+
+  figcaption {
+    margin-top: 1.1rem;
+    padding-top: 0.9rem;
+    border-top: 1px dashed var(--line-strong);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    color: var(--ink-dim);
+    line-height: 1.5;
+  }
+
+  .svg-label {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 13px;
+    fill: currentColor;
+  }
+
+  .svg-sub {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    fill: var(--ink-dim);
+  }
+
+  .svg-edge {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    fill: var(--ink-dim);
+  }
+
+  .svg-box {
+    fill: var(--surface-2);
+    stroke: var(--line-strong);
+    stroke-width: 1.5;
+  }
+
+  .svg-box--accent {
+    fill: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+    stroke: var(--accent);
+  }
+
+  .svg-flow {
+    stroke: currentColor;
+    stroke-width: 1.5;
+    fill: none;
+  }
+
+  .svg-flow--accent {
+    stroke: var(--accent);
+    stroke-width: 2;
+  }
+
+  .svg-flow--dash {
+    stroke: var(--ink-faint);
+    stroke-width: 1.5;
+    fill: none;
+    stroke-dasharray: 4 3;
+  }
+
+  /* ---------- table ---------- */
+
+  .table-wrap {
+    overflow-x: auto;
+    margin: 1.8rem 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: var(--step--1);
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: 0.7rem 0.95rem;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+
+  thead th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.73rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint);
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line-strong);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  td .mono,
+  td code {
+    font-size: 0.86em;
+    color: var(--ink);
+  }
+
+  td.num {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .tag {
+    display: inline-block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    padding: 0.12rem 0.4rem;
+    border-radius: 4px;
+    background: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    color: var(--ink-dim);
+  }
+
+  .tag--shell {
+    color: var(--accent-ink);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--line-strong));
+  }
+
+  /* ---------- code ---------- */
+
+  pre {
+    margin: 1.4rem 0;
+    padding: 1.1rem 1.2rem;
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    overflow-x: auto;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.84rem;
+    line-height: 1.7;
+    color: var(--ink);
+  }
+
+  pre .c {
+    color: var(--ink-faint);
+  }
+
+  pre .k {
+    color: var(--accent-ink);
+  }
+
+  p code,
+  li code,
+  dd code {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.08em 0.34em;
+    font-size: 0.86em;
+  }
+
+  /* ---------- callout ---------- */
+
+  .note {
+    margin: 1.8rem 0;
+    padding: 1rem 1.2rem;
+    border-left: 3px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+    border-radius: 0 8px 8px 0;
+    font-size: var(--step--1);
+  }
+
+  .note--warn {
+    border-left-color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 9%, var(--surface));
+  }
+
+  .note p {
+    margin: 0 0 0.5em;
+  }
+
+  .note p:last-child {
+    margin-bottom: 0;
+  }
+
+  .note .label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--warn);
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+
+  .note:not(.note--warn) .label {
+    color: var(--accent-ink);
+  }
+
+  /* ---------- misc ---------- */
+
+  .cols {
+    display: grid;
+    gap: 1.5rem 2.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    margin: 1.8rem 0;
+  }
+
+  .cols h3 {
+    margin-top: 0;
+  }
+
+  .kv {
+    font-size: var(--step--1);
+    line-height: 1.5;
+  }
+
+  .kv b {
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  hr.soft {
+    border: 0;
+    border-top: 1px dashed var(--line-strong);
+    margin: 2rem 0;
+  }
+
+  footer {
+    max-width: var(--content);
+    margin: 0 auto;
+    padding: 2.5rem clamp(1rem, 4vw, 2.5rem) 4rem;
+    border-top: 1px solid var(--line);
+    color: var(--ink-faint);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    line-height: 1.7;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  @media (max-width: 760px) {
+    .topbar__nav {
+      display: none;
+    }
+    .sec-head .num {
+      padding-top: 0.15rem;
+    }
+    section > .sec-head {
+      gap: 0.6rem;
+    }
+  }
+</style>
+
+<header class="topbar">
+  <span class="topbar__mark"><span aria-hidden="true"></span>Northwind Bank</span>
+  <nav class="topbar__nav" aria-label="Sections">
+    <a href="#overview">01 overview</a>
+    <a href="#architecture">02 architecture</a>
+    <a href="#render">03 render</a>
+    <a href="#federation">04 federation</a>
+    <a href="#routing">05 routing</a>
+    <a href="#performance">06 performance</a>
+    <a href="#run">07 run</a>
+    <a href="#deploy">08 deploy</a>
+  </nav>
+</header>
+
+<main>
+  <div class="masthead">
+    <p class="eyebrow">Engineering reference &nbsp;·&nbsp; internal</p>
+    <h1>Northwind Architecture</h1>
+    <p class="lede">
+      A working banking front end split into four independently deployed apps, composed at
+      request time with Module&nbsp;Federation and server-rendered as one streamed HTML
+      response.
+    </p>
+    <div class="chips">
+      <span class="chip"><b>Modern.js</b> 3.5 · Rspack</span>
+      <span class="chip"><b>Module Federation</b> 2.8.2</span>
+      <span class="chip"><b>React</b> 18.3 · streaming SSR</span>
+      <span class="chip"><b>React Router</b> 7 file routes</span>
+      <span class="chip"><b>shadcn/ui</b> · Tailwind v4</span>
+      <span class="chip">not Next.js</span>
+    </div>
+  </div>
+
+  <!-- 01 -->
+  <section id="overview">
+    <div class="sec-head"><span class="num">01</span><h2>What this is</h2></div>
+    <div class="prose">
+      <p>
+        Northwind is a retail-banking dashboard &mdash; accounts, transfers, payees, cards,
+        two-factor security &mdash; built as a <strong>micro-frontend</strong>. One host app
+        (the <em>shell</em>) owns routing, the page chrome, auth, and data loading. Three
+        <em>remote</em> apps each own one banking domain and expose their screens and their
+        data functions as federated modules. The shell pulls those in at runtime and renders
+        everything into a single server-streamed response.
+      </p>
+      <p>
+        Each of the four apps is a <strong>standalone repository</strong> &mdash; its own
+        <code>package.json</code> with real version numbers, its own <code>node_modules</code>,
+        its own git history, its own build and deploy. There is no monorepo and no workspace.
+        <code>shell/</code> could live on a different machine in a different org and nothing
+        would change except a URL. Shared UI is shadcn components <em>copied</em> into each
+        app as source, exactly how shadcn is meant to be used &mdash; it is not shipped as a
+        federated module.
+      </p>
+      <p>
+        The app also demonstrates the render boundary directly. Every authenticated page
+        carries a badge in the header: <span class="mono">&#9889;&nbsp;SSR&nbsp;·&nbsp;14:32:01</span>
+        with the Node version and pid that produced the HTML, or
+        <span class="mono">&#128187;&nbsp;CSR</span> on <code>/insights</code>, the one route
+        that deliberately renders in the browser from the same federated data module.
+      </p>
+
+      <dl class="spec">
+        <dt>Apps</dt>
+        <dd>
+          <span class="tag tag--shell">shell&nbsp;:3000</span>
+          <span class="tag">accounts&nbsp;:3001</span>
+          <span class="tag">payments&nbsp;:3002</span>
+          <span class="tag">security&nbsp;:3003</span>
+        </dd>
+        <dt>Composition</dt>
+        <dd>Module Federation 2.0 &mdash; runtime remotes, shared React singletons, SSR-aware.</dd>
+        <dt>Rendering</dt>
+        <dd>
+          <code>server.ssr.mode:&nbsp;"stream"</code> &mdash; the shell flushes first, then
+          <code>&lt;Suspense&gt;</code> / <code>&lt;Await&gt;</code> content streams in behind
+          skeletons.
+        </dd>
+        <dt>Data</dt>
+        <dd>
+          Per-app <code>src/mock/</code> &mdash; deterministic seeded banking data, an
+          HMAC-signed session cookie, artificial latency so streaming is visible.
+        </dd>
+        <dt>Auth</dt>
+        <dd>Any email + password &rarr; 2FA code <code>123456</code> &rarr; signed cookie.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- 02 -->
+  <section id="architecture">
+    <div class="sec-head"><span class="num">02</span><h2>Architecture</h2></div>
+    <div class="prose">
+      <p>
+        The shell declares the three remotes by their manifest URL. At render time it imports
+        two kinds of thing from each remote: plain <strong>async data functions</strong> from
+        <code>&lt;remote&gt;/data</code>, which it calls inside its route loaders, and
+        <strong>router-free view components</strong>, which it renders with the resolved data.
+        The remotes never touch routing or navigation &mdash; they use <code>&lt;a href&gt;</code>
+        and GET forms &mdash; so the same component renders identically whether it is running
+        standalone on its own port or federated into the shell's SSR stream.
+      </p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 880 470" role="img" aria-label="The shell host at port 3000 imports data functions and view components from three remote apps — accounts on 3001, payments on 3002, security on 3003 — each exposing a data module plus several views. React and react-dom are shared singletons across all four.">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor" />
+          </marker>
+          <marker id="ah-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--accent)" />
+          </marker>
+        </defs>
+
+        <!-- shell -->
+        <rect class="svg-box svg-box--accent" x="40" y="180" width="210" height="108" rx="9" />
+        <text class="svg-label" x="145" y="210" text-anchor="middle" font-weight="600">shell &mdash; host</text>
+        <text class="svg-sub" x="145" y="230" text-anchor="middle">:3000 · routing · auth</text>
+        <text class="svg-sub" x="145" y="246" text-anchor="middle">loaders · streaming SSR</text>
+        <text class="svg-sub" x="145" y="268" text-anchor="middle" fill="var(--accent)">renders the page</text>
+
+        <!-- browser -->
+        <rect class="svg-box" x="40" y="40" width="210" height="60" rx="9" />
+        <text class="svg-label" x="145" y="66" text-anchor="middle">browser</text>
+        <text class="svg-sub" x="145" y="84" text-anchor="middle">one streamed HTML doc</text>
+        <line class="svg-flow svg-flow--accent" x1="145" y1="180" x2="145" y2="104" marker-end="url(#ah-accent)" />
+        <text class="svg-edge" x="155" y="146">HTML + hydration</text>
+
+        <!-- remotes -->
+        <g>
+          <rect class="svg-box" x="470" y="30" width="370" height="118" rx="9" />
+          <text class="svg-label" x="490" y="55" font-weight="600">accounts</text>
+          <text class="svg-sub" x="490" y="72">:3001 · remoteEntry.js</text>
+          <text class="svg-sub" x="490" y="98">./data &nbsp; ./AccountsView</text>
+          <text class="svg-sub" x="490" y="114">./AccountDetailView &nbsp; ./widgets</text>
+        </g>
+        <g>
+          <rect class="svg-box" x="470" y="176" width="370" height="118" rx="9" />
+          <text class="svg-label" x="490" y="201" font-weight="600">payments</text>
+          <text class="svg-sub" x="490" y="218">:3002 · remoteEntry.js</text>
+          <text class="svg-sub" x="490" y="244">./data &nbsp; ./TransferView &nbsp; ./PayeesView</text>
+          <text class="svg-sub" x="490" y="260">./ActivityView &nbsp; ./QuickTransferCard</text>
+        </g>
+        <g>
+          <rect class="svg-box" x="470" y="322" width="370" height="118" rx="9" />
+          <text class="svg-label" x="490" y="347" font-weight="600">security</text>
+          <text class="svg-sub" x="490" y="364">:3003 · remoteEntry.js</text>
+          <text class="svg-sub" x="490" y="390">./data &nbsp; ./SecurityView &nbsp; ./TwoFactorView</text>
+          <text class="svg-sub" x="490" y="406">./DevicesView &nbsp; ./SessionsView</text>
+          <text class="svg-sub" x="490" y="422">./TwoFactorChallenge &nbsp; ./SecurityStatusCard</text>
+        </g>
+
+        <!-- wiring -->
+        <path class="svg-flow" d="M250 210 C 360 150, 380 100, 470 88" marker-end="url(#ah)" />
+        <path class="svg-flow" d="M250 234 L 470 235" marker-end="url(#ah)" />
+        <path class="svg-flow" d="M250 258 C 360 320, 380 360, 470 381" marker-end="url(#ah)" />
+        <text class="svg-edge" x="300" y="120">import ./data (loaders)</text>
+        <text class="svg-edge" x="300" y="352">import ./Views (render)</text>
+
+        <!-- shared -->
+        <rect class="svg-box" x="40" y="360" width="210" height="66" rx="9" stroke-dasharray="4 3" />
+        <text class="svg-label" x="145" y="385" text-anchor="middle">shared singletons</text>
+        <text class="svg-sub" x="145" y="404" text-anchor="middle">react · react-dom</text>
+        <path class="svg-flow--dash" d="M145 360 L 145 288" />
+        <path class="svg-flow--dash" d="M250 393 C 400 420, 430 300, 470 250" />
+        <path class="svg-flow--dash" d="M250 400 C 420 470, 450 430, 470 400" />
+      </svg>
+      <figcaption>
+        The shell imports <code>./data</code> in its loaders and the <code>*View</code>
+        components for rendering. <code>react</code> and <code>react-dom</code> are the only
+        shared modules &mdash; sharing the router would drag each remote's runtime in and
+        render a second <code>&lt;Router&gt;</code>.
+      </figcaption>
+    </figure>
+
+    <div class="prose">
+      <h3>Why only <code>react</code> and <code>react-dom</code> are shared</h3>
+      <p>
+        Module Federation's <code>shared</code> map forces one instance of a package across
+        all apps. React <em>must</em> be a singleton &mdash; two copies means two reconcilers
+        and broken hooks. But sharing <code>react-router</code> or the Modern.js runtime
+        pulls each remote's framework bootstrap into the shell, and that bootstrap renders
+        its own <code>&lt;Router&gt;</code>. The fix is the constraint above: remotes ship
+        presentational components only, the shell owns every router hook, loader, and
+        <code>&lt;Suspense&gt;</code> boundary.
+      </p>
+    </div>
+  </section>
+
+  <!-- 03 -->
+  <section id="render">
+    <div class="sec-head"><span class="num">03</span><h2>How a request renders</h2></div>
+    <div class="prose">
+      <p>
+        A page load is one HTTP response that stays open. The shell resolves the fast data,
+        sends the full page shell with skeletons, and then streams each slow region in as its
+        promise settles &mdash; all before the connection closes. The browser paints
+        progressively; React hydrates when the document finishes.
+      </p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 880 300" role="img" aria-label="Timeline of a streamed render: the shell loader awaits fast data and returns a deferred payload, the server flushes the HTML shell with skeletons, then streams the cashflow, spending and activity regions as each promise resolves, and finally the browser hydrates.">
+        <defs>
+          <marker id="t-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor" />
+          </marker>
+        </defs>
+
+        <line class="svg-flow" x1="40" y1="250" x2="850" y2="250" marker-end="url(#t-ah)" />
+        <text class="svg-edge" x="820" y="272">time</text>
+
+        <!-- lanes -->
+        <text class="svg-sub" x="40" y="42" fill="var(--ink-dim)">SERVER</text>
+        <text class="svg-sub" x="40" y="182" fill="var(--ink-dim)">BROWSER</text>
+        <line x1="40" y1="150" x2="850" y2="150" stroke="var(--line-strong)" stroke-width="1" stroke-dasharray="2 3" />
+
+        <!-- server blocks -->
+        <rect class="svg-box" x="55" y="55" width="150" height="46" rx="7" />
+        <text class="svg-label" x="130" y="76" text-anchor="middle" font-size="12">loader awaits</text>
+        <text class="svg-sub" x="130" y="92" text-anchor="middle">accounts · payees · security</text>
+
+        <rect class="svg-box svg-box--accent" x="225" y="55" width="120" height="46" rx="7" />
+        <text class="svg-label" x="285" y="76" text-anchor="middle" font-size="12">defer(&hellip;)</text>
+        <text class="svg-sub" x="285" y="92" text-anchor="middle" fill="var(--accent)">3 promises</text>
+
+        <rect class="svg-box" x="365" y="55" width="120" height="46" rx="7" />
+        <text class="svg-label" x="425" y="80" text-anchor="middle" font-size="12">flush shell</text>
+
+        <rect class="svg-box" x="505" y="40" width="95" height="34" rx="6" />
+        <text class="svg-sub" x="552" y="61" text-anchor="middle">cashflow</text>
+        <rect class="svg-box" x="612" y="55" width="95" height="34" rx="6" />
+        <text class="svg-sub" x="659" y="76" text-anchor="middle">spending</text>
+        <rect class="svg-box" x="600" y="95" width="95" height="34" rx="6" />
+        <text class="svg-sub" x="647" y="116" text-anchor="middle">activity</text>
+
+        <!-- browser blocks -->
+        <rect class="svg-box" x="365" y="160" width="150" height="40" rx="7" />
+        <text class="svg-label" x="440" y="184" text-anchor="middle" font-size="12">paint shell + skeletons</text>
+
+        <rect class="svg-box" x="525" y="160" width="180" height="40" rx="7" />
+        <text class="svg-label" x="615" y="184" text-anchor="middle" font-size="12">swap skeleton &rarr; content</text>
+
+        <rect class="svg-box svg-box--accent" x="720" y="160" width="110" height="40" rx="7" />
+        <text class="svg-label" x="775" y="184" text-anchor="middle" font-size="12">hydrate</text>
+
+        <!-- connectors -->
+        <path class="svg-flow" d="M425 101 L 440 158" marker-end="url(#t-ah)" />
+        <path class="svg-flow--dash" d="M552 74 C 560 120, 560 130, 560 158" />
+        <path class="svg-flow--dash" d="M659 89 C 640 120, 630 130, 620 158" />
+        <path class="svg-flow--dash" d="M647 129 C 640 140, 640 145, 635 158" />
+        <path class="svg-flow" d="M705 180 L 718 180" marker-end="url(#t-ah)" />
+      </svg>
+      <figcaption>
+        <code>page.data.ts</code> returns <code>defer({ accounts, &hellip;, cashflow, spending,
+        activity })</code>: the first keys are awaited, the last three are unresolved promises
+        rendered inside <code>&lt;Suspense&gt;&lt;Await&gt;</code>. One response carries the
+        shell and, moments later, the three regions.
+      </figcaption>
+    </figure>
+
+    <div class="prose">
+      <p>
+        The federated widgets participate in this stream. <code>accounts/widgets</code>
+        exports the cashflow and spending charts and the recent-activity list; the shell
+        renders them server-side with the streamed data, so &ldquo;view source&rdquo; on the
+        dashboard shows real numbers &mdash; <span class="mono">$128,032.02</span>,
+        <span class="mono">Everyday&nbsp;Checking</span>, transaction rows &mdash; in the HTML,
+        not an empty div.
+      </p>
+    </div>
+  </section>
+
+  <!-- 04 -->
+  <section id="federation">
+    <div class="sec-head"><span class="num">04</span><h2>The federation contract</h2></div>
+    <div class="prose">
+      <p>
+        Every remote exposes the same shape: one <code>./data</code> module of plain async
+        functions, and one component per screen. The split is the whole trick &mdash; data
+        crosses the boundary as a function the shell awaits in a loader; UI crosses as a
+        component the shell renders with props already resolved.
+      </p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 840 250" role="img" aria-label="For one route the shell's page.data.ts imports loadTransferContext from payments/data and awaits it in the loader; the shell's page.tsx imports TransferView from payments and renders it with the loader data as props. The remote component receives resolved data and emits plain anchor and form elements only.">
+        <defs>
+          <marker id="f-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor" />
+          </marker>
+        </defs>
+
+        <rect class="svg-box" x="24" y="26" width="270" height="82" rx="8" />
+        <text class="svg-label" x="40" y="50" font-weight="600" font-size="12.5">shell &mdash; page.data.ts</text>
+        <text class="svg-sub" x="40" y="70">import &#123; loadTransferContext &#125;</text>
+        <text class="svg-sub" x="40" y="86">&nbsp;&nbsp;from "payments/data"</text>
+        <text class="svg-sub" x="40" y="102" fill="var(--accent)">await loadTransferContext()</text>
+
+        <rect class="svg-box" x="24" y="142" width="270" height="82" rx="8" />
+        <text class="svg-label" x="40" y="166" font-weight="600" font-size="12.5">shell &mdash; page.tsx</text>
+        <text class="svg-sub" x="40" y="186">import TransferView from "payments"</text>
+        <text class="svg-sub" x="40" y="206" fill="var(--accent)">&lt;TransferView context=&#123;ctx&#125; /&gt;</text>
+
+        <rect class="svg-box svg-box--accent" x="540" y="84" width="284" height="82" rx="8" />
+        <text class="svg-label" x="558" y="108" font-weight="600" font-size="12.5">payments remote</text>
+        <text class="svg-sub" x="558" y="128">./data &nbsp;&rarr;&nbsp; async functions</text>
+        <text class="svg-sub" x="558" y="146">./TransferView &nbsp;&rarr;&nbsp; &lt;a&gt; · GET &lt;form&gt;</text>
+
+        <path class="svg-flow--accent" d="M294 66 C 420 60, 430 108, 538 118" marker-end="url(#f-ah)" />
+        <text class="svg-edge" x="352" y="52">data &mdash; awaited in loader</text>
+        <path class="svg-flow" d="M294 184 C 420 190, 430 148, 538 136" marker-end="url(#f-ah)" />
+        <text class="svg-edge" x="352" y="210">view &mdash; rendered with props</text>
+      </svg>
+      <figcaption>
+        <code>page.data.ts</code> (loader) pulls <code>./data</code>; <code>page.tsx</code>
+        pulls the <code>*View</code>. The remote returns data and markup &mdash; never a hook,
+        a route, or a <code>&lt;Link&gt;</code>.
+      </figcaption>
+    </figure>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Remote</th>
+            <th>Exposes</th>
+            <th>Consumed by (shell route)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag">accounts</span><br /><span class="mono" style="font-size:0.75rem;color:var(--ink-faint)">:3001</span></td>
+            <td>
+              <code>./data</code> &mdash; loadAccountsList, loadAccountDetail, loadDashboardWidgets<br />
+              <code>./AccountsView</code> · <code>./AccountDetailView</code><br />
+              <code>./widgets</code> &mdash; CashflowCard, SpendingCard, RecentActivityCard
+            </td>
+            <td class="mono" style="font-size:0.8rem">
+              / &nbsp;(dashboard)<br />
+              /accounts<br />
+              /accounts/:id<br />
+              /insights &nbsp;(client-side)
+            </td>
+          </tr>
+          <tr>
+            <td><span class="tag">payments</span><br /><span class="mono" style="font-size:0.75rem;color:var(--ink-faint)">:3002</span></td>
+            <td>
+              <code>./data</code> &mdash; loadTransferContext, loadPayees, loadTransfers, submitTransfer<br />
+              <code>./TransferView</code> · <code>./PayeesView</code> · <code>./ActivityView</code><br />
+              <code>./QuickTransferCard</code>
+            </td>
+            <td class="mono" style="font-size:0.8rem">
+              / &nbsp;(quick transfer)<br />
+              /payments<br />
+              /payments/payees<br />
+              /payments/activity
+            </td>
+          </tr>
+          <tr>
+            <td><span class="tag">security</span><br /><span class="mono" style="font-size:0.75rem;color:var(--ink-faint)">:3003</span></td>
+            <td>
+              <code>./data</code> &mdash; loadSecurityOverview, loadDevices, loadSessions, verifyCode, setTwoFactorEnabled<br />
+              <code>./SecurityView</code> · <code>./TwoFactorView</code> · <code>./DevicesView</code> · <code>./SessionsView</code><br />
+              <code>./TwoFactorChallenge</code> · <code>./SecurityStatusCard</code>
+            </td>
+            <td class="mono" style="font-size:0.8rem">
+              / &nbsp;(status card)<br />
+              /login/verify &nbsp;(2FA)<br />
+              /security · /security/two-factor<br />
+              /security/devices · /security/sessions
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <span class="label">Version matrix &mdash; pinned in every app's pnpm.overrides</span>
+      <p>
+        The Module Federation stack is fragile across minor versions. All four apps pin the
+        identical set: <code>@rspack/core&nbsp;2.1.8</code>,
+        <code>react-server-dom-rspack&nbsp;0.0.2</code>, every
+        <code>@module-federation/*</code> at <code>2.8.2</code>
+        (<code>@module-federation/node&nbsp;2.7.36</code>), <code>react</code> and
+        <code>react-dom</code> at <code>18.3.1</code>, and <code>pnpm&nbsp;9.15.4</code> via
+        the <code>packageManager</code> field.
+      </p>
+    </div>
+  </section>
+
+  <!-- 05 -->
+  <section id="routing">
+    <div class="sec-head"><span class="num">05</span><h2>Routing &amp; auth</h2></div>
+    <div class="prose">
+      <p>
+        The shell uses Modern.js file-system routing (React Router 7 under the hood).
+        <code>src/routes/__app/</code> is the authenticated tree behind a layout loader that
+        checks the session; <code>src/routes/__auth/</code> is the login flow. A route's
+        <code>page.data.ts</code> is its loader and action; <code>page.tsx</code> is the view.
+      </p>
+      <h3>The auth flow</h3>
+      <ol>
+        <li><strong>Login</strong> &mdash; any email + password. The action sets a short-lived
+          <code>bank_2fa_pending</code> cookie and returns <code>{ next }</code> as JSON.</li>
+        <li><strong>Verify</strong> &mdash; the shell renders <code>security/TwoFactorChallenge</code>
+          (a federated <code>input-otp</code> widget). Code <code>123456</code>. The action
+          sets the HMAC-signed <code>bank_session</code> cookie.</li>
+        <li><strong>Guarded</strong> &mdash; <code>__app/layout.data.ts</code> verifies the
+          cookie signature with <code>node:crypto</code> on every request and redirects to
+          <code>/login</code> if it fails.</li>
+      </ol>
+      <div class="note">
+        <span class="label">Modern.js 3.5 quirk, handled in code</span>
+        <p>
+          The client data layer follows redirect responses from route <em>loaders</em> but
+          not from <em>actions</em>. The auth actions therefore return
+          <code>{ next }</code> + <code>Set-Cookie</code> and the component calls
+          <code>useNavigate(next)</code>. Only one <code>Set-Cookie</code> per action
+          response survives &mdash; the verify action sets <code>bank_session</code> only.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 -->
+  <section id="performance">
+    <div class="sec-head"><span class="num">06</span><h2>Performance</h2></div>
+    <div class="prose">
+      <p>
+        The render path is built for a fast first paint: streaming SSR gives an early,
+        data-filled shell; route code is split per page; federated code loads only on the
+        routes that use it; and the document head is kept clear of anything render-blocking
+        from a third party.
+      </p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Lever</th><th>What it does</th><th>Setting</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Streaming SSR</td>
+            <td>Shell HTML flushes before slow data resolves; regions stream in behind skeletons. Fast TTFB, progressive paint.</td>
+            <td class="mono" style="font-size:0.8rem">server.ssr.mode:&nbsp;"stream"</td>
+          </tr>
+          <tr>
+            <td>Self-hosted font</td>
+            <td>One 47&nbsp;KB variable Inter (Latin) woff2, same-origin, <code>&lt;link&nbsp;rel=preload&gt;</code>, <code>font-display:&nbsp;swap</code>. No Google Fonts stylesheet, no second/third origin. Mono falls back to the platform font.</td>
+            <td class="mono" style="font-size:0.8rem">src/assets/ + html.tags</td>
+          </tr>
+          <tr>
+            <td>Evergreen target</td>
+            <td>No polyfill chunk, no legacy transpilation &mdash; SWC emits modern syntax.</td>
+            <td class="mono" style="font-size:0.8rem">output.polyfill:&nbsp;"off"<br />browserslist: chrome&nbsp;&ge;&nbsp;100 &hellip;</td>
+          </tr>
+          <tr>
+            <td>Lean prod bundle</td>
+            <td><code>console.*</code> stripped; no client source maps shipped (~4.7&nbsp;MB of <code>.map</code> not deployed).</td>
+            <td class="mono" style="font-size:0.8rem">performance.removeConsole<br />output.sourceMap:&nbsp;false</td>
+          </tr>
+          <tr>
+            <td>Code splitting</td>
+            <td>One JS chunk per route; shared vendor chunks; the charts library loads only where a chart renders.</td>
+            <td class="mono" style="font-size:0.8rem">Rspack defaults</td>
+          </tr>
+          <tr>
+            <td>Immutable static assets</td>
+            <td>Hashed filenames under <code>/static/</code> &mdash; cache one year, serve from a CDN.</td>
+            <td class="mono" style="font-size:0.8rem">Cache-Control: immutable</td>
+          </tr>
+          <tr>
+            <td>No <code>user-scalable=no</code></td>
+            <td>Default mobile viewport replaced so pinch-zoom works (accessibility).</td>
+            <td class="mono" style="font-size:0.8rem">html.meta.viewport</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Transfer budget</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Resource</th><th class="num">Raw</th><th class="num">Gzip</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>index</code> entry</td><td class="num">113 KB</td><td class="num">32 KB</td><td>runtime + MF host</td></tr>
+          <tr><td><code>lib-router</code></td><td class="num">96 KB</td><td class="num">31 KB</td><td>React Router 7 + data layer</td></tr>
+          <tr><td><code>__app/layout</code></td><td class="num">40 KB</td><td class="num">10 KB</td><td>sidebar, header, command menu</td></tr>
+          <tr><td>dashboard <code>page</code></td><td class="num">14 KB</td><td class="num">5 KB</td><td>route-specific</td></tr>
+          <tr><td>app CSS (all)</td><td class="num">67 KB</td><td class="num">12 KB</td><td>Tailwind v4, used classes only</td></tr>
+          <tr><td>Inter woff2</td><td class="num">47 KB</td><td class="num">&mdash;</td><td>already compressed, preloaded</td></tr>
+          <tr><td colspan="4" style="color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;font-size:0.78rem">shell, all routes combined: 1.26 MB raw / 401 KB gzip. A single page loads a fraction &mdash; the dashboard's own JS is ≈ 80 KB gzip before shared vendor chunks.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <h3>Web Vitals posture</h3>
+      <ul>
+        <li><strong>LCP</strong> &mdash; the largest text block is in the first flushed chunk
+          of HTML (SSR), and its font is preloaded same-origin. No render-blocking third
+          party in <code>&lt;head&gt;</code>.</li>
+        <li><strong>CLS</strong> &mdash; <code>font-display: swap</code> with a close-metric
+          system fallback; streamed regions occupy reserved skeleton space, so the
+          skeleton&nbsp;&rarr;&nbsp;content swap does not reflow the page.</li>
+        <li><strong>INP</strong> &mdash; React 18 concurrent renderer; interactive-only
+          widgets (menus, the transfer form) mount after hydration so they never block it.</li>
+      </ul>
+      <div class="note note--warn">
+        <span class="label">Measure against a real deployment</span>
+        <p>
+          Numbers above are build output. Run Lighthouse or a field tool against a deployed
+          instance for LCP / CLS / INP &mdash; the dev server (unminified, HMR) and the
+          production federation caveat in section 08 both make a local Lighthouse run
+          misleading.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 -->
+  <section id="run">
+    <div class="sec-head"><span class="num">07</span><h2>Run it locally</h2></div>
+    <div class="prose">
+      <p>
+        Node 18+. Run <code>corepack enable</code> once &mdash; pnpm 9.15.4 is provisioned
+        automatically from each app's <code>packageManager</code> field. Everything is driven
+        from the top folder, which holds only orchestration scripts.
+      </p>
+    </div>
+    <pre><span class="c"># install all four apps</span>
+npm run install:all
+
+<span class="c"># clears caches, boots the 3 remotes one by one, then the shell</span>
+npm run dev            <span class="c"># → http://localhost:3000</span>
+
+<span class="c"># any email + password, then 2FA code 123456</span></pre>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Command</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">npm run install:all</td><td><code>pnpm install</code> in each app</td></tr>
+          <tr><td class="mono">npm run dev</td><td>serial remote boot, then shell &mdash; aborts if :3000&ndash;:3003 are busy</td></tr>
+          <tr><td class="mono">npm run stop</td><td>kill a lost dev run whose terminal is gone</td></tr>
+          <tr><td class="mono">npm run build</td><td><code>modern build</code> in each app</td></tr>
+          <tr><td class="mono">npm run start</td><td><code>modern serve</code> in each app (production)</td></tr>
+          <tr><td class="mono">npm run typecheck</td><td><code>tsc --noEmit</code> in each app</td></tr>
+          <tr><td class="mono">npm run init:git</td><td>turn each app into its own git repository</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="prose">
+      <p>
+        Each app also runs alone &mdash; <code>cd accounts &amp;&amp; npm run dev</code>
+        serves the accounts remote on :3001 with its own routes, useful for building a
+        domain in isolation.
+      </p>
+    </div>
+  </section>
+
+  <!-- 08 -->
+  <section id="deploy">
+    <div class="sec-head"><span class="num">08</span><h2>Deploy</h2></div>
+    <div class="prose">
+      <p>
+        Four deployables, four pipelines. Each app is
+        <code>install&nbsp;&rarr;&nbsp;build&nbsp;&rarr;&nbsp;serve</code> &mdash; a long-lived
+        Node process (<code>modern serve</code>) behind a CDN. They find each other purely
+        through environment variables: the shell needs each remote's public origin to build
+        the manifest URLs; each remote needs its own public origin so its hashed chunks load
+        from the right place.
+      </p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 860 340" role="img" aria-label="Deployment topology: a CDN in front of four Node services — shell, accounts, payments, security. The browser hits the shell through the CDN; the shell's server fetches each remote's manifest server-to-server; static chunks for every app are served from the CDN edge.">
+        <defs>
+          <marker id="d-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor" />
+          </marker>
+          <marker id="d-ah-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--accent)" />
+          </marker>
+        </defs>
+
+        <rect class="svg-box" x="40" y="140" width="120" height="56" rx="8" />
+        <text class="svg-label" x="100" y="166" text-anchor="middle">browser</text>
+        <text class="svg-sub" x="100" y="183" text-anchor="middle">bank.example</text>
+
+        <rect class="svg-box svg-box--accent" x="240" y="130" width="130" height="76" rx="8" />
+        <text class="svg-label" x="305" y="158" text-anchor="middle">CDN / edge</text>
+        <text class="svg-sub" x="305" y="176" text-anchor="middle">TLS · brotli</text>
+        <text class="svg-sub" x="305" y="192" text-anchor="middle">/static/* cached 1y</text>
+
+        <rect class="svg-box" x="470" y="30" width="150" height="44" rx="7" />
+        <text class="svg-label" x="545" y="52" text-anchor="middle" font-size="12">shell service</text>
+        <text class="svg-sub" x="545" y="67" text-anchor="middle">node · :3000</text>
+
+        <rect class="svg-box" x="470" y="96" width="150" height="40" rx="7" />
+        <text class="svg-sub" x="545" y="120" text-anchor="middle">accounts · :3001</text>
+        <rect class="svg-box" x="470" y="150" width="150" height="40" rx="7" />
+        <text class="svg-sub" x="545" y="174" text-anchor="middle">payments · :3002</text>
+        <rect class="svg-box" x="470" y="204" width="150" height="40" rx="7" />
+        <text class="svg-sub" x="545" y="228" text-anchor="middle">security · :3003</text>
+
+        <path class="svg-flow--accent" d="M160 168 L 236 168" marker-end="url(#d-ah-a)" />
+        <path class="svg-flow" d="M370 150 C 420 120, 430 70, 468 60" marker-end="url(#d-ah)" />
+        <text class="svg-edge" x="376" y="104">SSR page</text>
+
+        <path class="svg-flow--dash" d="M622 74 C 690 84, 690 108, 622 116" />
+        <path class="svg-flow--dash" d="M622 66 C 730 105, 720 160, 622 172" />
+        <path class="svg-flow--dash" d="M622 60 C 755 125, 730 210, 622 226" />
+        <text class="svg-edge" x="562" y="294">shell fetches each remote manifest</text>
+
+        <path class="svg-flow" d="M468 262 C 400 292, 348 252, 322 210" marker-end="url(#d-ah)" />
+        <text class="svg-edge" x="110" y="294">each app publishes hashed chunks to the edge</text>
+
+        <text class="svg-sub" x="40" y="322" fill="var(--ink-faint)">solid = browser request path &nbsp;·&nbsp; dashed = server-to-server</text>
+      </svg>
+      <figcaption>
+        The browser only ever talks to the shell (through the CDN). The shell's server
+        resolves the three remote manifests server-to-server at render time; each app's
+        hashed <code>/static/</code> chunks sit on the edge.
+      </figcaption>
+    </figure>
+
+    <h3>Environment</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Variable</th><th>Set on</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">PORT</td><td>all</td><td>listen port (defaults 3000&ndash;3003)</td></tr>
+          <tr><td class="mono">SHELL_ORIGIN</td><td>shell</td><td>public base URL for the shell's own assets (or a CDN)</td></tr>
+          <tr><td class="mono">ACCOUNTS_ORIGIN</td><td>shell + accounts</td><td>public URL of the accounts service &mdash; manifest on the shell, <code>assetPrefix</code> on the remote</td></tr>
+          <tr><td class="mono">PAYMENTS_ORIGIN</td><td>shell + payments</td><td>&hellip; same for payments</td></tr>
+          <tr><td class="mono">SECURITY_ORIGIN</td><td>shell + security</td><td>&hellip; same for security</td></tr>
+          <tr><td class="mono">SESSION_SECRET</td><td>all</td><td>HMAC key for the session cookie &mdash; must match across apps</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cols">
+      <div>
+        <h3>Container (recommended)</h3>
+        <p class="kv">
+          One image per app: <b>node:20-alpine</b>, <code>corepack enable</code>,
+          <code>pnpm install --frozen-lockfile</code>, <code>pnpm build</code>,
+          <code>CMD pnpm serve</code>. Deploy to <b>Cloud Run</b>, <b>Fly.io</b>,
+          <b>Render</b>, <b>Railway</b>, <b>AWS App Runner / ECS</b>, or
+          <b>Azure Container Apps</b>. Put <b>Cloudflare</b> or the platform CDN in front
+          for TLS, compression, and <code>/static/</code> caching.
+        </p>
+      </div>
+      <div>
+        <h3>Serverless / platform</h3>
+        <p class="kv">
+          Modern.js ships deploy adapters &mdash; <code>output.deploy</code> targets
+          <b>Vercel</b>, <b>Netlify</b>, or a plain Node bundle. Deploy each app as its own
+          project with its own domain, wire the <code>*_ORIGIN</code> vars to those domains.
+        </p>
+      </div>
+    </div>
+
+    <div class="prose">
+      <h3>CI</h3>
+      <p>
+        A change in <code>accounts/</code> rebuilds and redeploys only that service. The
+        contract that keeps them compatible is the exposed module names and the shared
+        React version &mdash; both change rarely and both are reviewed. A shell deploy is
+        only needed when a route, a loader, or the page chrome changes.
+      </p>
+    </div>
+
+    <div class="note note--warn">
+      <span class="label">Known limitation &mdash; production SSR federation</span>
+      <p>
+        <code>modern serve</code> does not serve the SSR remote-entry at
+        <code>/bundles/static/remoteEntry.js</code>, so on a plain production deploy the
+        federated widgets fall back to <strong>client rendering</strong> &mdash; they still
+        work, they just aren't in the streamed HTML for those regions. Full SSR federation
+        works in <code>npm run dev</code>.
+      </p>
+      <p>
+        Fix path: a small static middleware serving each remote's
+        <code>dist/bundles/static/</code>, or the <code>staticServePlugin</code> from
+        <code>@module-federation/modern-js-v3</code> once its build-time init issue is
+        resolved for this Modern.js version.
+      </p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>
+    northwind-mfe/ &nbsp;&mdash;&nbsp; shell&nbsp;:3000 &nbsp;·&nbsp; accounts&nbsp;:3001
+    &nbsp;·&nbsp; payments&nbsp;:3002 &nbsp;·&nbsp; security&nbsp;:3003
+  </p>
+  <p>
+    Modern.js 3.5.0 &nbsp;·&nbsp; React 18.3.1 &nbsp;·&nbsp; @module-federation/modern-js-v3
+    2.8.2 &nbsp;·&nbsp; @rspack/core 2.1.8 &nbsp;·&nbsp; react-server-dom-rspack 0.0.2
+    &nbsp;·&nbsp; pnpm 9.15.4 &nbsp;·&nbsp; Tailwind v4 &nbsp;·&nbsp; Recharts 2.15.4
+  </p>
+  <p>Engineering reference &mdash; regenerate when the federation contract or deploy topology changes.</p>
+</footer>
+
+</body>
+</html>
