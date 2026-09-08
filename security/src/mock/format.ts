@@ -32,17 +32,27 @@ export function formatPercent(fraction: number, digits = 2): string {
   return `${(fraction * 100).toFixed(digits)}%`;
 }
 
+// All date formatting pins `timeZone: "UTC"`. Without it `toLocale*` formats in
+// the runtime's zone, so the server (UTC) and the browser render different text
+// for the same instant ("Sep 7" vs "Sep 6") and hydration mismatches.
 export function formatDate(iso: string, style: "short" | "medium" | "long" = "medium"): string {
   const d = new Date(iso);
-  if (style === "short") return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (style === "short")
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
   if (style === "long")
     return d.toLocaleDateString("en-US", {
       weekday: "long",
       month: "long",
       day: "numeric",
       year: "numeric",
+      timeZone: "UTC",
     });
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 export function formatDateTime(iso: string): string {
@@ -51,6 +61,7 @@ export function formatDateTime(iso: string): string {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "UTC",
   });
 }
 

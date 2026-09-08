@@ -12,8 +12,10 @@ export interface ServerRenderInfo {
   app: string;
 }
 
-const hhmmss = (iso: string) =>
-  new Date(iso).toLocaleTimeString("en-US", { hour12: false });
+// Slice the time straight out of the ISO string (UTC) rather than
+// `toLocaleTimeString`, which formats in the runtime's timezone — the server
+// (UTC) and the browser would produce different text and break hydration.
+const hhmmss = (iso: string) => iso.slice(11, 19);
 
 /**
  * Header badge. Reads the deepest matched route's `render` value:
