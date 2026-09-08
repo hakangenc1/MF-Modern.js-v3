@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@modern-js/runtime/router";
-import { CreditCard, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { CreditCard, LogOut, Repeat, ShieldCheck, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,6 +64,11 @@ export function UserMenu({ user }: { user: User }) {
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link to="/login?switch=1">
+            <Repeat className="size-4" /> Switch profile
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
           <Link to="/logout">
             <LogOut className="size-4" /> Sign out

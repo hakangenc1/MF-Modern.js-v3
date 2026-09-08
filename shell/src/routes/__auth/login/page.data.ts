@@ -30,8 +30,10 @@ const toCard = (p: (typeof PERSONAS)[number]): PersonaCard => ({
 });
 
 export const loader = async ({ request }: LoaderFunctionArgs): Promise<LoginData | Response> => {
-  if (getSession(request)) return redirect("/");
   const url = new URL(request.url);
+  // `?switch` lets an already-signed-in user re-open the picker to change persona
+  // (picking one issues a fresh bank_session that overwrites the old one).
+  if (getSession(request) && !url.searchParams.has("switch")) return redirect("/");
   return {
     redirectTo: safeRedirect(url.searchParams.get("redirectTo")),
     personas: PERSONAS.map(toCard),

@@ -1,13 +1,15 @@
-import { redirect } from "@modern-js/runtime/router";
-import { clearedEntitlementsCookie, clearedSessionCookie } from "@/mock/session";
+import { clearedSessionCookie } from "@/mock/session";
 
+// Same shape as loginRedirect() in mock/session.ts (a raw 302 Response with a
+// plain headers object) — that reliably reaches the browser here, whereas the
+// router's redirect() helper and a Headers instance did not forward Set-Cookie.
+// The entitlement override cookie is persona-scoped, so clearing the session is
+// enough: the next persona resolves its own defaults.
 function bounce() {
-  // Loaders keep multiple Set-Cookie headers (unlike actions). Clear the session
-  // and the entitlement override so the next persona starts from its defaults.
-  const headers = new Headers();
-  headers.append("Set-Cookie", clearedSessionCookie());
-  headers.append("Set-Cookie", clearedEntitlementsCookie());
-  return redirect("/login", { headers });
+  return new Response(null, {
+    status: 302,
+    headers: { Location: "/login", "Set-Cookie": clearedSessionCookie() },
+  });
 }
 
 export const loader = bounce;
