@@ -17,10 +17,25 @@ export interface ServerRenderInfo {
 // (UTC) and the browser would produce different text and break hydration.
 const hhmmss = (iso: string) => iso.slice(11, 19);
 
+interface Inspection {
+  serverKB: number;
+  serverEls: number;
+  serverChars: number;
+  liveEls: number;
+  liveChars: number;
+  html: string;
+}
+
+const cleanText = (el: Element | null) => (el?.textContent ?? "").replace(/\s+/g, " ").trim();
+
 /**
  * Header badge. Reads the deepest matched route's `render` value:
  * - a server stamp  → this route was server-rendered (SSR + streaming)
  * - `null`          → this route fetches its own data in the browser (CSR)
+ *
+ * The popover's "Compare" button re-fetches the current URL and measures the
+ * HTML the server sent against what's in the live DOM now — so the SSR vs CSR
+ * difference is concrete, not just a claim.
  */
 export function RenderStamp() {
   const matches = useMatches();
@@ -29,7 +44,7 @@ export function RenderStamp() {
   const isServer = !!server;
 
   const [clientAt, setClientAt] = useState<string | null>(null);
-  const [src, setSrc] = useState<string | null>(null);
+  const [report, setReport] = useState<Inspection | null>(null);
   const [busy, setBusy] = useState(false);
   // Mount the Radix Popover only after hydration. Radix `useId` is numbered by
   // tree position and Modern.js streaming SSR can flush the header inside a
@@ -42,15 +57,25 @@ export function RenderStamp() {
 
   useEffect(() => {
     setClientAt(new Date().toISOString());
+    setReport(null); // stale once the route changes
   }, [leaf?.pathname]);
 
-  const viewSource = async () => {
+  const inspect = async () => {
     setBusy(true);
     try {
-      const html = await fetch(window.location.href).then((r) => r.text());
-      const doc = new DOMParser().parseFromString(html, "text/html");
-      const main = doc.querySelector("main")?.textContent ?? "";
-      setSrc(main.replace(/\s+/g, " ").trim().slice(0, 1400));
+      const raw = await fetch(window.location.href, { credentials: "same-origin" }).then((r) =>
+        r.text(),
+      );
+      const serverMain = new DOMParser().parseFromString(raw, "text/html").querySelector("main");
+      const liveMain = document.querySelector("main");
+      setReport({
+        serverKB: Math.round((new Blob([raw]).size / 1024) * 10) / 10,
+        serverEls: serverMain?.querySelectorAll("*").length ?? 0,
+        serverChars: cleanText(serverMain).length,
+        liveEls: liveMain?.querySelectorAll("*").length ?? 0,
+        liveChars: cleanText(liveMain).length,
+        html: (serverMain?.innerHTML ?? "").replace(/\s{2,}/g, " ").trim(),
+      });
     } finally {
       setBusy(false);
     }
@@ -90,7 +115,7 @@ export function RenderStamp() {
           {badgeInner}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[22rem]">
+      <PopoverContent align="end" className="w-[24rem]">
         <p className="text-sm font-semibold">
           {isServer ? "Server-side rendered" : "Client-side rendered"}
         </p>
@@ -100,10 +125,9 @@ export function RenderStamp() {
               This route's HTML was produced by the{" "}
               <span className="font-medium text-foreground">“{server.app}”</span> app at{" "}
               <span className="font-mono text-foreground">{hhmmss(server.at)}</span> on{" "}
-              <span className="font-mono text-foreground">{server.runtime}</span> (pid{" "}
-              {server.pid}).
+              <span className="font-mono text-foreground">{server.runtime}</span> (pid {server.pid}).
             </p>
-            <p>Federated widgets from :3001–:3003 are streamed into that same response.</p>
+            <p>Federated widgets from :3001–:3004 are streamed into that same response.</p>
             {clientAt ? (
               <p className="text-[color:var(--pos)]">Hydrated in your browser at {hhmmss(clientAt)}.</p>
             ) : null}
@@ -111,21 +135,60 @@ export function RenderStamp() {
         ) : (
           <div className="mt-2 space-y-1.5 text-xs text-muted-foreground">
             <p>
-              The server sends only an empty shell for this route. The numbers you see were
+              The server sends only a near-empty shell for this route. The numbers you see were
               computed in your browser{clientAt ? ` at ${hhmmss(clientAt)}` : ""} — the same
               federated <span className="font-mono">accounts/data</span> module, called
               client-side.
             </p>
           </div>
         )}
-        <Button size="sm" variant="outline" className="mt-3 w-full" onClick={viewSource} disabled={busy}>
-          {busy ? "Fetching…" : "Show what the server actually sent"}
+
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-3 w-full"
+          onClick={inspect}
+          disabled={busy}
+        >
+          {busy ? "Fetching…" : report ? "Re-run comparison" : "Compare: server HTML vs your screen"}
         </Button>
-        {src !== null ? (
-          <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-muted p-2 font-mono text-[10px] leading-snug text-muted-foreground">
-            {src || "(the server HTML has no rendered content for this route)"}
-            {src ? "…" : ""}
-          </pre>
+
+        {report ? (
+          <div className="mt-3 space-y-2 text-xs">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 tabular-nums">
+              <span className="text-muted-foreground">inside &lt;main&gt;</span>
+              <span className="text-right font-medium">server sent</span>
+              <span className="text-right font-medium">on screen now</span>
+
+              <span className="text-muted-foreground">Elements</span>
+              <span className="text-right">{report.serverEls}</span>
+              <span className="text-right">{report.liveEls}</span>
+
+              <span className="text-muted-foreground">Text characters</span>
+              <span className="text-right">{report.serverChars.toLocaleString()}</span>
+              <span className="text-right">{report.liveChars.toLocaleString()}</span>
+
+              <span className="text-muted-foreground">HTML payload</span>
+              <span className="text-right">{report.serverKB} KB</span>
+              <span className="text-right text-muted-foreground">—</span>
+            </div>
+
+            <p className={isServer ? "text-[color:var(--pos)]" : "text-[color:var(--warning)]"}>
+              {isServer
+                ? `The server did the work — ${report.serverEls} elements arrived as HTML, readable before any JavaScript ran. Hydration just re-attached listeners.`
+                : `The server sent ${report.serverEls} elements; your browser then built the ${report.liveEls} you see. View source on this URL shows an empty container.`}
+            </p>
+
+            <details>
+              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                View the raw HTML the server sent
+              </summary>
+              <pre className="mt-1 max-h-44 overflow-auto whitespace-pre-wrap rounded bg-muted p-2 font-mono text-[10px] leading-snug text-muted-foreground">
+                {report.html.slice(0, 2200) || "(the <main> in the server response is empty)"}
+                {report.html.length > 2200 ? "…" : ""}
+              </pre>
+            </details>
+          </div>
         ) : null}
       </PopoverContent>
     </Popover>

@@ -54,28 +54,34 @@ export default function AccountsView({
         description="Every balance across your Northwind relationship, updated in real time."
       />
 
-      <div className="mt-6 grid grid-cols-2 gap-4 rounded-xl border bg-card p-5 sm:grid-cols-4">
-        <StatTile label="Net worth" value={formatCurrency(netWorth.total)} />
-        <StatTile label="Total assets" value={formatCurrency(netWorth.assets)} />
-        <StatTile label="Total liabilities" value={formatCurrency(netWorth.liabilities)} />
-        <StatTile
-          label="This quarter"
-          value={
-            <span style={{ color: netWorth.change >= 0 ? "var(--pos)" : "var(--neg)" }}>
-              {formatCurrency(netWorth.change, { sign: true, compact: true })}
-            </span>
-          }
-          hint={`${formatPercent(netWorth.changePct)} change`}
-        />
-      </div>
+      {/* Container queries, not viewport breakpoints: this view is federated into
+          the shell (content area ~945px, beside a sidebar) and also runs
+          standalone (full width). @-variants respond to the actual space we get
+          so both render identically. */}
+      <div className="@container">
+        <div className="mt-6 grid grid-cols-2 gap-4 rounded-xl border bg-card p-5 @xl:grid-cols-4">
+          <StatTile label="Net worth" value={formatCurrency(netWorth.total)} />
+          <StatTile label="Total assets" value={formatCurrency(netWorth.assets)} />
+          <StatTile label="Total liabilities" value={formatCurrency(netWorth.liabilities)} />
+          <StatTile
+            label="This quarter"
+            value={
+              <span style={{ color: netWorth.change >= 0 ? "var(--pos)" : "var(--neg)" }}>
+                {formatCurrency(netWorth.change, { sign: true, compact: true })}
+              </span>
+            }
+            hint={`${formatPercent(netWorth.changePct)} change`}
+          />
+        </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {sorted.map((account) => (
-          <AccountTile key={account.id} account={account} />
-        ))}
-      </div>
+        <div className="mt-6 grid grid-cols-1 gap-4 @lg:grid-cols-2 @4xl:grid-cols-4">
+          {sorted.map((account) => (
+            <AccountTile key={account.id} account={account} />
+          ))}
+        </div>
 
-      {children ? <div className="mt-6">{children}</div> : null}
+        {children ? <div className="mt-6">{children}</div> : null}
+      </div>
     </>
   );
 }
