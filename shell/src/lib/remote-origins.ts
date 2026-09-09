@@ -11,9 +11,24 @@ const REMOTES: Record<string, number> = {
   twofactor: 3004,
 };
 
+const originOf = (name: string, port: number) =>
+  process.env[`${name.toUpperCase()}_ORIGIN`] ?? `http://localhost:${port}`;
+
 export function remoteOrigins(): string[] {
-  return Object.entries(REMOTES).map(
-    ([name, port]) =>
-      process.env[`${name.toUpperCase()}_ORIGIN`] ?? `http://localhost:${port}`,
-  );
+  return Object.entries(REMOTES).map(([name, port]) => originOf(name, port));
+}
+
+export interface RemoteEntry {
+  name: string;
+  origin: string;
+  /** The Module Federation manifest URL — what `loadRemote` / `registerRemotes` needs. */
+  manifest: string;
+}
+
+/** The four remotes as a registry the client can feed to the MF runtime. */
+export function remoteRegistry(): RemoteEntry[] {
+  return Object.entries(REMOTES).map(([name, port]) => {
+    const origin = originOf(name, port);
+    return { name, origin, manifest: `${origin}/static/mf-manifest.json` };
+  });
 }

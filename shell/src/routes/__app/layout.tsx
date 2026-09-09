@@ -42,6 +42,8 @@ const LABELS: Record<string, string> = {
   "two-factor": "Two-factor auth",
   devices: "Devices",
   sessions: "Sessions",
+  lab: "Lab",
+  remotes: "Federation lab",
 };
 
 export default function AppLayout() {

@@ -5,6 +5,7 @@ import {
   Bell,
   CreditCard,
   FileText,
+  FlaskConical,
   LayoutDashboard,
   LineChart,
   PiggyBank,
@@ -46,6 +47,7 @@ const LINKS: Link[] = [
   { group: "Go to", label: "Notifications", to: "/notifications", icon: Bell },
   { group: "Go to", label: "Security", to: "/security", icon: ShieldCheck },
   { group: "Go to", label: "Settings", to: "/settings", icon: Settings },
+  { group: "Go to", label: "Federation lab", to: "/lab/remotes", icon: FlaskConical },
   { group: "Actions", label: "New transfer", to: "/payments", icon: ArrowLeftRight },
   {
     group: "Actions",

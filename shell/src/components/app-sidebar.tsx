@@ -10,6 +10,7 @@ import {
   LineChart,
   PiggyBank,
   FileText,
+  FlaskConical,
   Bell,
   Settings,
 } from "lucide-react";
@@ -84,6 +85,10 @@ const NAV: { label: string; items: NavItem[] }[] = [
       },
       { title: "Settings", to: "/settings", icon: Settings },
     ],
+  },
+  {
+    label: "Lab",
+    items: [{ title: "Federation lab", to: "/lab/remotes", icon: FlaskConical }],
   },
 ];
 
