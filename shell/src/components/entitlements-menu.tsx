@@ -19,6 +19,10 @@ export function EntitlementsMenu({
   personaDefaults: Entitlement[];
 }) {
   const [mounted, setMounted] = useState(false);
+  // Controlled so the popover survives the same-route navigation each toggle
+  // triggers (the /entitlements action redirects back) — you can flip several
+  // grants without it snapping shut.
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     // non-urgent: let hydration of streamed Suspense boundaries finish first (React #421)
     startTransition(() => setMounted(true));
@@ -44,7 +48,7 @@ export function EntitlementsMenu({
   }
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button type="button" className={badgeClass} title="Entitlements">
           {inner}
