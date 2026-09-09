@@ -52,31 +52,7 @@ const manifestWasFetched = (url: string) =>
 
 /* --------------------------------------------------------------------- page */
 
-export default function FederationLabRoute() {
-  // Client-only page: it drives the MF runtime and reads browser-only
-  // Performance entries, so render a static shell on the server and mount the
-  // real thing after hydration — no mismatch to reconcile.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  if (!mounted) {
-    return (
-      <>
-        <Helmet>
-          <title>Federation lab · Northwind Bank</title>
-        </Helmet>
-        <PageHeader
-          title="Federation lab"
-          description="Load remotes on demand from the browser — the pattern a host uses when it federates many micro-frontends."
-        />
-        <p className="mt-6 text-sm text-muted-foreground">Loading the lab…</p>
-      </>
-    );
-  }
-  return <FederationLab />;
-}
-
-function FederationLab() {
+export default function FederationLab() {
   const { registry } = useLoaderData() as LabData;
 
   const idle: RowState = { status: "idle", warmOnArrival: false };
