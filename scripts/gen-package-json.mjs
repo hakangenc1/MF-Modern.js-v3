@@ -5,15 +5,23 @@ import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-// Local fix for @module-federation/modern-js-v3 2.8.2's production SSR static
-// middleware: it used path.join("/", "/bundles") (→ "\bundles" on Windows, so
-// the SSR remote entry is never matched) and set Content-Length from the JS
-// string length instead of the UTF-8 byte length (→ truncated chunks →
-// "Unexpected token" when the shell evaluates a remote). See patches/.
-const PATCH = "@module-federation__modern-js-v3@2.8.2.patch";
-const patchedDependencies = {
-  "@module-federation/modern-js-v3@2.8.2": `patches/${PATCH}`,
+// Vendored dependency patches (see patches/ for the diffs):
+//
+//  - @module-federation/modern-js-v3 2.8.2: its production SSR static middleware
+//    used path.join("/", "/bundles") (→ "\bundles" on Windows, so the SSR remote
+//    entry is never matched) and set Content-Length from the JS string length
+//    instead of the UTF-8 byte length (→ truncated chunks → "Unexpected token"
+//    when the shell evaluates a remote).
+//  - @modern-js/runtime 3.5.0: a leftover `console.info("args", …)` debug call in
+//    the streamed deferred-loader-data inline script — logs on every navigation
+//    with deferred data. Removed.
+const PATCHES = {
+  "@module-federation/modern-js-v3@2.8.2": "@module-federation__modern-js-v3@2.8.2.patch",
+  "@modern-js/runtime@3.5.0": "@modern-js__runtime@3.5.0.patch",
 };
+const patchedDependencies = Object.fromEntries(
+  Object.entries(PATCHES).map(([dep, file]) => [dep, `patches/${file}`]),
+);
 
 const common = {
   "@modern-js/runtime": "3.5.0",
@@ -112,6 +120,8 @@ for (const app of ["shell", "accounts", "payments", "security", "twofactor"]) {
   };
   writeFileSync(join(root, app, "package.json"), JSON.stringify(pkg, null, 2) + "\n");
   mkdirSync(join(root, app, "patches"), { recursive: true });
-  copyFileSync(join(root, "patches", PATCH), join(root, app, "patches", PATCH));
-  console.log(`wrote ${app}/package.json + patches/${PATCH}`);
+  for (const file of Object.values(PATCHES)) {
+    copyFileSync(join(root, "patches", file), join(root, app, "patches", file));
+  }
+  console.log(`wrote ${app}/package.json + ${Object.keys(PATCHES).length} patch(es)`);
 }
