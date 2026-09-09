@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { useMatches } from "@modern-js/runtime/router";
 import { MonitorSmartphone, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,11 @@ export function RenderStamp() {
   // and hydrates identically; the popover is client-only so there is nothing to
   // mismatch.
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // Defer this post-hydration flip so it can't interrupt a still-streaming
+  // Suspense boundary (React #421).
+  useEffect(() => {
+    startTransition(() => setMounted(true));
+  }, []);
 
   useEffect(() => {
     setClientAt(new Date().toISOString());

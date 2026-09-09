@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button";
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // Defer this post-hydration flip so it can't interrupt a still-streaming
+  // Suspense boundary (React #421).
+  useEffect(() => {
+    startTransition(() => setMounted(true));
+  }, []);
 
   const isDark = resolvedTheme === "dark";
 
