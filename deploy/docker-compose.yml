@@ -15,9 +15,9 @@ x-app-env: &app-env
   MODERNJS_DEPLOY: "node"
   SESSION_SECRET: "${SESSION_SECRET:?set SESSION_SECRET in deploy/.env}"
   # Scales the mock API's artificial latency (delay.ts). 1 = full demo latency,
-  # 0 = instant. ~0.3 keeps pages fast (<500ms) while leaving the streamed
-  # sections enough of a beat that they don't race the header's hydration.
-  MOCK_LATENCY: "${MOCK_LATENCY:-0.3}"
+  # 0 = instant. 0.1 keeps pages fast while the streamed sections still visibly
+  # arrive a beat after the shell.
+  MOCK_LATENCY: "${MOCK_LATENCY:-0.1}"
 
 services:
   twofactor:

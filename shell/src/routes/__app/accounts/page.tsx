@@ -5,7 +5,7 @@ import { formatDate, type Transaction } from "@/mock";
 import AccountsView from "accounts/AccountsView";
 import { Button } from "@/components/ui/button";
 import { Money, SectionCard } from "@/components/patterns/kit";
-import { ActivityListSkeleton, AwaitError } from "@/components/patterns/skeletons";
+import { ActivityListSkeleton } from "@/components/patterns/skeletons";
 
 interface Data {
   accounts: unknown[];
@@ -32,7 +32,7 @@ export default function AccountsPage() {
           bodyClassName="p-0"
         >
           <Suspense fallback={<div className="p-5"><ActivityListSkeleton rows={8} /></div>}>
-            <Await resolve={data.activity} errorElement={<div className="p-5"><AwaitError label="recent activity" /></div>}>
+            <Await resolve={data.activity}>
               {(rows: Transaction[]) => (
                 <ul className="divide-y">
                   {rows.map((t) => (

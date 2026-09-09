@@ -1,27 +1,4 @@
-import { useRevalidator } from "@modern-js/runtime/router";
 import { Skeleton } from "@/components/ui/skeleton";
-
-/**
- * `errorElement` for a streamed `<Await>`. A deferred promise can reject for a
- * real failure or just because a revalidation (e.g. an entitlement toggle)
- * superseded the in-flight request — either way, degrade this one section
- * instead of throwing to the route boundary and blanking the page.
- */
-export function AwaitError({ label = "this section" }: { label?: string }) {
-  const revalidator = useRevalidator();
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-      <span>Couldn’t load {label}.</span>
-      <button
-        type="button"
-        className="font-medium text-foreground underline-offset-4 hover:underline"
-        onClick={() => revalidator.revalidate()}
-      >
-        Retry
-      </button>
-    </div>
-  );
-}
 
 export function ChartSkeleton({ height = 240 }: { height?: number }) {
   return (
