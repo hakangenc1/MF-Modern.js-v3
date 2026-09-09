@@ -277,14 +277,18 @@ function RuntimeRegistrationDemo({ registry }: { registry: RemoteEntry[] }) {
 /* ----------------------------------------------- live MF resource request log */
 
 function NetworkMonitor() {
+  // Client-only: the resource list differs between server and client, so render
+  // nothing until after hydration (avoids a text-content mismatch).
+  const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState(0);
   useEffect(() => {
+    setMounted(true);
     const t = setInterval(() => setNow((n) => n + 1), 1000);
     return () => clearInterval(t);
   }, []);
 
   const entries = useMemo(() => {
-    if (typeof performance === "undefined") return [];
+    if (!mounted || typeof performance === "undefined") return [];
     return performance
       .getEntriesByType("resource")
       .filter((e) => /mf-manifest\.json|remoteEntry\.js/.test(e.name))
@@ -295,7 +299,7 @@ function NetworkMonitor() {
       }))
       .sort((a, b) => a.at - b.at);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [now]);
+  }, [now, mounted]);
 
   return (
     <SectionCard
