@@ -1114,11 +1114,10 @@
 
     <div class="prose">
       <p>
-        Flip any flag at runtime from the top-bar <strong>Entitlements</strong> popover or
-        <strong>Settings &rarr; Entitlements</strong>. Both POST the full list to the
-        action-only route <code>__app/entitlements/page.data.ts</code>, which rewrites the
-        cookie; React Router revalidates the layout loader and the shell plus every federated
-        view re-render with the new grants &mdash; no reload.
+        Flip any flag from <strong>Settings &rarr; Entitlements</strong>. The switch POSTs
+        the full list to the Settings action (<code>intent=entitlements</code>), which
+        rewrites the cookie and redirects back &mdash; a fresh navigation re-runs every
+        loader, so the shell and all the federated views render with the new grants.
       </p>
     </div>
   </section>

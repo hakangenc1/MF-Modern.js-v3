@@ -1,5 +1,6 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@modern-js/runtime/router";
+import { redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@modern-js/runtime/router";
 import {
+  ALL_ENTITLEMENTS,
   getAccounts,
   getProfile,
   setAccountNickname,
@@ -8,7 +9,7 @@ import {
   type Entitlement,
   type Profile,
 } from "@/mock";
-import { getSession, loginRedirect } from "@/mock/session";
+import { entitlementsCookie, getSession, loginRedirect } from "@/mock/session";
 
 export type SettingsData = {
   profile: Profile;
@@ -39,8 +40,21 @@ export const loader = async ({
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+  const session = getSession(request);
+  if (!session) return loginRedirect(request);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
+
+  if (intent === "entitlements") {
+    const wanted = String(form.get("value") ?? "").split(",");
+    const valid = ALL_ENTITLEMENTS.filter((e) => wanted.includes(e));
+    // Redirect (not a data return): a fresh navigation re-runs every loader so
+    // the sidebar + federated views pick up the change. Set-Cookie survives a
+    // 302 from an action (it does not from a loader).
+    return redirect("/settings", {
+      headers: { "Set-Cookie": entitlementsCookie(session.persona.id, valid) },
+    });
+  }
 
   if (intent === "profile") {
     const profile = await updateProfile({

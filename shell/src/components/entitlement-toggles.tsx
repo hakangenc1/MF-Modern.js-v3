@@ -1,26 +1,17 @@
-import { useEffect, useState } from "react";
-import { useFetcher, useLocation } from "@modern-js/runtime/router";
+import { useFetcher } from "@modern-js/runtime/router";
 import { RotateCcw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import {
-  ALL_ENTITLEMENTS,
-  ENTITLEMENT_META,
-  type Entitlement,
-} from "@/lib/entitlements";
+import { ALL_ENTITLEMENTS, ENTITLEMENT_META, type Entitlement } from "@/lib/entitlements";
 
-const sameSet = (a: Set<string>, b: Set<string>) =>
-  a.size === b.size && [...a].every((x) => b.has(x));
+const same = (a: Entitlement[], b: Entitlement[]) =>
+  a.length === b.length && a.every((x) => b.includes(x));
 
 /**
- * The entitlement switches. Used in the top-bar popover and on the Settings
- * page. Every change POSTs the full list to the `/entitlements` resource route;
- * React Router then revalidates the app layout loader so the shell + every
- * federated view re-render with the new grants.
- *
- * Local optimistic state (not `fetcher.formData`) is the source of truth while
- * writes are in flight, so toggling several switches quickly chains correctly
- * instead of racing the server round-trips.
+ * The entitlement switches on the Settings page. Toggling posts the full list to
+ * the Settings action (`intent=entitlements`), which rewrites the signed cookie
+ * and redirects back — a normal navigation re-runs every loader, so the shell
+ * and all the federated views re-render with the new grants.
  */
 export function EntitlementToggles({
   current,
@@ -32,37 +23,13 @@ export function EntitlementToggles({
   personaDefaults: Entitlement[];
 }) {
   const fetcher = useFetcher();
-  const { pathname, search } = useLocation();
-  const [optimistic, setOptimistic] = useState<Set<string> | null>(null);
-  const active = optimistic ?? new Set<string>(current);
+  const busy = fetcher.state !== "idle";
 
-  // Drop the optimistic layer once the revalidated loader agrees.
-  const currentKey = [...current].sort().join(",");
-  useEffect(() => {
-    if (optimistic && sameSet(optimistic, new Set(currentKey.split(",").filter(Boolean)))) {
-      setOptimistic(null);
-    }
-  }, [currentKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const submit = (next: Entitlement[]) =>
+    fetcher.submit({ intent: "entitlements", value: next.join(",") }, { method: "post" });
 
-  const commit = (next: Set<string>) => {
-    setOptimistic(next);
-    const value = ALL_ENTITLEMENTS.filter((e) => next.has(e)).join(",");
-    // `from` lets the action redirect us back here — a clean navigation re-runs
-    // every loader with the new grants without aborting in-flight defer() promises.
-    fetcher.submit(
-      { value, from: `${pathname}${search}` },
-      { method: "post", action: "/entitlements" },
-    );
-  };
-
-  const toggle = (e: Entitlement) => {
-    const next = new Set(active);
-    if (next.has(e)) next.delete(e);
-    else next.add(e);
-    commit(next);
-  };
-
-  const isDefault = sameSet(active, new Set(personaDefaults));
+  const toggle = (e: Entitlement) =>
+    submit(current.includes(e) ? current.filter((x) => x !== e) : [...current, e]);
 
   return (
     <div className="space-y-3">
@@ -74,7 +41,8 @@ export function EntitlementToggles({
               <p className="text-xs text-muted-foreground">{ENTITLEMENT_META[e].description}</p>
             </div>
             <Switch
-              checked={active.has(e)}
+              checked={current.includes(e)}
+              disabled={busy}
               onCheckedChange={() => toggle(e)}
               aria-label={ENTITLEMENT_META[e].label}
             />
@@ -86,8 +54,8 @@ export function EntitlementToggles({
         variant="ghost"
         size="sm"
         className="w-full"
-        disabled={isDefault}
-        onClick={() => commit(new Set(personaDefaults))}
+        disabled={busy || same(current, personaDefaults)}
+        onClick={() => submit(personaDefaults)}
       >
         <RotateCcw className="size-3.5" />
         Reset to {personaLabel} defaults

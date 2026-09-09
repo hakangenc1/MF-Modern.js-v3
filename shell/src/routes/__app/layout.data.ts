@@ -7,9 +7,7 @@ import { remoteOrigins } from "@/lib/remote-origins";
 
 export type AppLayoutData = {
   user: User;
-  /** The signed-in persona and its default grants (for "reset to defaults"). */
-  persona: { id: string; label: string; defaults: Entitlement[] };
-  /** Effective entitlements — persona defaults, or the runtime override. */
+  /** Effective entitlements — drives the sidebar/route gating via context. */
   entitlements: Entitlement[];
   render: ServerStamp;
   remoteOrigins: string[];
@@ -25,11 +23,6 @@ export const loader = async ({
   const notifications = await getNotifications();
   return {
     user: session.user,
-    persona: {
-      id: session.persona.id,
-      label: session.persona.label,
-      defaults: session.persona.entitlements,
-    },
     entitlements: session.entitlements,
     render: serverStamp("shell"),
     remoteOrigins: remoteOrigins(),

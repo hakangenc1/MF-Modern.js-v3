@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@modern-js/runtime/router";
 import { CreditCard, LogOut, Repeat, ShieldCheck, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -22,10 +22,7 @@ export function UserMenu({ user }: { user: User }) {
   // interactive triggers all do client-only work anyway, so they mount after
   // hydration behind an identical static trigger.
   const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    // non-urgent: let hydration of streamed Suspense boundaries finish first (React #421)
-    startTransition(() => setMounted(true));
-  }, []);
+  useEffect(() => setMounted(true), []);
 
   const trigger = (
     <Button variant="ghost" className="h-9 gap-2 px-1.5">

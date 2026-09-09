@@ -59,8 +59,8 @@ npm run dev                      # boots all 5 (remotes first, then the shell)
 
 Open **http://localhost:3000** → pick an **entitlement persona** (Premier or Personal) →
 2FA code **`123456`**. The persona decides which features the shell unlocks and passes down
-to the remotes; flip individual entitlements live from the top-bar **Entitlements** popover
-or **Settings → Entitlements**. See [`docs/ARCHITECTURE.md` §05a](docs/ARCHITECTURE.md#05a--entitlements).
+to the remotes; flip individual entitlements from **Settings → Entitlements**.
+See [`docs/ARCHITECTURE.md` §05a](docs/ARCHITECTURE.md#05a--entitlements).
 
 | root command | what it does |
 |---|---|

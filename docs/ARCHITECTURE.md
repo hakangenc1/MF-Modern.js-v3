@@ -301,12 +301,11 @@ standalone on its own port.
 
 ### Changing entitlements at runtime
 
-The top-bar **Entitlements** popover and the **Settings → Entitlements** card share
-`EntitlementToggles`. Each switch POSTs the full list to the action-only route
-`__app/entitlements/page.data.ts`, which rewrites `bank_entitlements` and returns 200 +
-`Set-Cookie`. React Router then revalidates the app layout loader, `getSession()` re-reads
-the cookie, and the shell + every federated view re-render with the new grants — no reload,
-just the top navigation-progress bar.
+**Settings → Entitlements** has a switch per flag (`EntitlementToggles`). Flipping one
+POSTs the full list to the Settings action with `intent=entitlements`, which rewrites the
+`bank_entitlements` cookie and **redirects back to `/settings`**. That fresh navigation
+re-runs every loader, `getSession()` re-reads the cookie, and the shell + every federated
+view render with the new grants. The top-bar shows the current count and links to Settings.
 
 ---
 

@@ -39,7 +39,7 @@ export default function LoginRoute() {
       }
       footer={
         <>
-          You can flip individual entitlements later from the top bar or{" "}
+          You can flip individual entitlements later from{" "}
           <span className="font-medium text-foreground">Settings</span>.
         </>
       }

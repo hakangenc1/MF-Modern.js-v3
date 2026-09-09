@@ -69,8 +69,8 @@ Each app: `modern.config.ts` (port, `ssr.mode:'stream'`, `output.assetPrefix` fo
 - `dataviz`-validated chart colors, dark mode, empty states, responsive, error boundaries.
 - Performance pass — see [`ARCHITECTURE.md` §06](ARCHITECTURE.md#06--performance).
 - **Entitlement personas** — pick Premier or Personal on the sign-in page; the shell
-  resolves the persona's grants and threads them to every remote as props; a top-bar
-  popover + a Settings card flip individual grants live. See
+  resolves the persona's grants and threads them to every remote as props; Settings →
+  Entitlements flips individual grants. See
   [`ARCHITECTURE.md` §05a](ARCHITECTURE.md#05a--entitlements).
 - `git init` per app + this root repo.
 

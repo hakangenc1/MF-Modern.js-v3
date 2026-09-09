@@ -20,8 +20,8 @@ import { CommandMenu } from "@/components/command-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/user-menu";
 import { NotificationBell } from "@/components/notification-bell";
+import { SlidersHorizontal } from "lucide-react";
 import { RenderStamp } from "@/components/patterns/render-stamp";
-import { EntitlementsMenu } from "@/components/entitlements-menu";
 import { NavProgress, NavTransition } from "@/components/nav-progress";
 import { useSpaNavigation } from "@/components/spa-nav";
 import { EntitlementsProvider } from "@/lib/entitlements";
@@ -42,12 +42,10 @@ const LABELS: Record<string, string> = {
   "two-factor": "Two-factor auth",
   devices: "Devices",
   sessions: "Sessions",
-  lab: "Lab",
-  remotes: "Federation lab",
 };
 
 export default function AppLayout() {
-  const { user, persona, entitlements, remoteOrigins, notifications, unreadCount } =
+  const { user, entitlements, remoteOrigins, notifications, unreadCount } =
     useLoaderData() as AppLayoutData;
   const { pathname } = useLocation();
   const segments = pathname.split("/").filter(Boolean);
@@ -99,11 +97,14 @@ export default function AppLayout() {
 
           <div className="ml-auto flex items-center gap-1.5">
             <RenderStamp />
-            <EntitlementsMenu
-              current={entitlements}
-              personaLabel={persona.label}
-              personaDefaults={persona.defaults}
-            />
+            <Link
+              to="/settings"
+              title="Entitlements"
+              className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <SlidersHorizontal className="size-3" />
+              <span className="font-mono">{entitlements.length}/7</span>
+            </Link>
             <div className="hidden sm:block">
               <CommandMenu />
             </div>

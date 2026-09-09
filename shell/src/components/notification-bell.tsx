@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useFetcher } from "@modern-js/runtime/router";
 import { Bell, CreditCard, FileText, Server, ShieldAlert } from "lucide-react";
 import { relativeTime, type NotificationItem, type NotificationKind } from "@/mock";
@@ -31,10 +31,7 @@ export function NotificationBell({
   unreadCount: number;
 }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    // non-urgent: let hydration of streamed Suspense boundaries finish first (React #421)
-    startTransition(() => setMounted(true));
-  }, []);
+  useEffect(() => setMounted(true), []);
   const fetcher = useFetcher();
 
   const list = (fetcher.data as { notifications?: NotificationItem[] })?.notifications ?? notifications;
