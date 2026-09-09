@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLoaderData } from "@modern-js/runtime/router";
 import { Helmet } from "@modern-js/runtime/head";
-import {
-  loadRemote,
-  preloadRemote,
-  registerRemotes,
-} from "@module-federation/modern-js-v3/runtime";
 import { CheckCircle2, Loader2, XCircle, Zap } from "lucide-react";
 import { formatCurrency } from "@/mock";
 import { Button } from "@/components/ui/button";
@@ -13,6 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader, SectionCard } from "@/components/patterns/kit";
 import type { LabData } from "./page.data";
 import type { RemoteEntry } from "@/lib/remote-origins";
+
+// Loaded lazily, on the client only — importing the MF runtime into an SSR'd
+// route double-inits the federation host and corrupts hydration.
+const mfRuntime = () => import("@module-federation/modern-js-v3/runtime");
 
 /* -------------------------------------------------------- data-module probes */
 // A tiny read per remote — proves the remote's own code is now running in the
@@ -53,7 +52,31 @@ const manifestWasFetched = (url: string) =>
 
 /* --------------------------------------------------------------------- page */
 
-export default function FederationLab() {
+export default function FederationLabRoute() {
+  // Client-only page: it drives the MF runtime and reads browser-only
+  // Performance entries, so render a static shell on the server and mount the
+  // real thing after hydration — no mismatch to reconcile.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
+    return (
+      <>
+        <Helmet>
+          <title>Federation lab · Northwind Bank</title>
+        </Helmet>
+        <PageHeader
+          title="Federation lab"
+          description="Load remotes on demand from the browser — the pattern a host uses when it federates many micro-frontends."
+        />
+        <p className="mt-6 text-sm text-muted-foreground">Loading the lab…</p>
+      </>
+    );
+  }
+  return <FederationLab />;
+}
+
+function FederationLab() {
   const { registry } = useLoaderData() as LabData;
 
   const idle: RowState = { status: "idle", warmOnArrival: false };
@@ -82,6 +105,7 @@ export default function FederationLab() {
       set(r.name, { status: "loading", detail: undefined });
       const t0 = performance.now();
       try {
+        const { loadRemote } = await mfRuntime();
         // The four remotes are already declared at build time, so this uses the
         // known entry. `loadRemote` still only fetches the manifest + remoteEntry
         // the first time — nothing loads until you ask.
@@ -201,7 +225,9 @@ export default function FederationLab() {
                     size="sm"
                     variant="ghost"
                     title="Fetch the entry now, before it is needed"
-                    onClick={() => preloadRemote([{ nameOrAlias: r.name }])}
+                    onClick={() =>
+                      mfRuntime().then((m) => m.preloadRemote([{ nameOrAlias: r.name }]))
+                    }
                   >
                     <Zap className="size-3.5" /> Preload
                   </Button>
@@ -230,6 +256,7 @@ function RuntimeRegistrationDemo({ registry }: { registry: RemoteEntry[] }) {
   const run = async () => {
     setState("loading");
     try {
+      const { loadRemote, registerRemotes } = await mfRuntime();
       // The shell was built with no knowledge of "lab-accounts". Give the runtime
       // the manifest URL and it becomes usable.
       registerRemotes([{ name: alias, entry: accounts.manifest }], { force: true });
