@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useMemo } from "react";
 import { Link, Outlet, useLoaderData, useLocation } from "@modern-js/runtime/router";
 import { Helmet } from "@modern-js/runtime/head";
 import {
@@ -47,13 +47,15 @@ const LABELS: Record<string, string> = {
 export default function AppLayout() {
   const { user, entitlements, remoteOrigins, notifications, unreadCount } =
     useLoaderData() as AppLayoutData;
+  // Stable reference so context consumers don't re-render mid-hydration.
+  const grants = useMemo(() => entitlements, [entitlements.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
   const { pathname } = useLocation();
   const segments = pathname.split("/").filter(Boolean);
   // Upgrade federated <a href> / GET <form> to client-side navigation.
   useSpaNavigation();
 
   return (
-    <EntitlementsProvider value={entitlements}>
+    <EntitlementsProvider value={grants}>
     <SidebarProvider>
       <Helmet>
         {remoteOrigins.map((o) => (
