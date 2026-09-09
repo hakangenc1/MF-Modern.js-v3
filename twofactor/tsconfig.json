@@ -17,7 +17,6 @@
     "allowJs": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
-    "baseUrl": "./",
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src", "modern.config.ts", "module-federation.config.ts"],
