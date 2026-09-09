@@ -10,9 +10,9 @@ import { ALL_ENTITLEMENTS } from "./types";
 import type { Entitlement, Persona, User } from "./types";
 
 const SECRET = process.env.SESSION_SECRET || "mfe-2.0-demo-secret-do-not-use-in-prod";
-export const SESSION_COOKIE = "bank_session";
-export const PENDING_COOKIE = "bank_2fa_pending";
-export const ENTITLEMENTS_COOKIE = "bank_entitlements";
+const SESSION_COOKIE = "bank_session";
+const PENDING_COOKIE = "bank_2fa_pending";
+const ENTITLEMENTS_COOKIE = "bank_entitlements";
 const MAX_AGE = 60 * 60 * 8; // 8h
 
 const DEFAULT_PERSONA = PERSONAS[0]!;
@@ -83,7 +83,7 @@ function splitIdentity(raw: string): { email: string; personaId?: string } {
  * users (log out / pick the other persona) drops a stale override instead of
  * carrying it over. Stored as `personaId::["flag",…]`.
  */
-export function readEntitlementOverride(
+function readEntitlementOverride(
   request: Request,
   expectedPersonaId: string,
 ): Entitlement[] | null {
@@ -113,12 +113,7 @@ export function getSession(request: Request): Session | null {
   return { user: { ...persona.user, email }, email, persona, entitlements };
 }
 
-export interface PendingLogin {
-  email: string;
-  personaId: string;
-}
-
-export function getPending(request: Request): PendingLogin | null {
+export function getPending(request: Request): { email: string; personaId: string } | null {
   const cookies = parseCookies(request.headers.get("cookie"));
   const raw = unsign(cookies[PENDING_COOKIE]);
   if (!raw) return null;
@@ -143,9 +138,6 @@ export const entitlementsCookie = (personaId: string, list: Entitlement[]) =>
     ),
     MAX_AGE,
   );
-export const clearedPendingCookie = () => serializeCookie(PENDING_COOKIE, "", 0);
-export const clearedSessionCookie = () => serializeCookie(SESSION_COOKIE, "", 0);
-export const clearedEntitlementsCookie = () => serializeCookie(ENTITLEMENTS_COOKIE, "", 0);
 
 /* --------------------------------------------------------------- guards */
 

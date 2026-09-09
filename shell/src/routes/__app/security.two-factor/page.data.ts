@@ -1,10 +1,6 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@modern-js/runtime/router";
-import { getSession } from "@/mock/session";
+import type { ActionFunctionArgs } from "@modern-js/runtime/router";
 import { loadSecurityOverview, regenerateCodes, setTwoFactorEnabled, verifyCode } from "security/data";
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  getSession(request);
-  return { overview: await loadSecurityOverview() };
-};
+export const loader = async () => ({ overview: await loadSecurityOverview() });
 export const action = async ({ request }: ActionFunctionArgs) => {
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");

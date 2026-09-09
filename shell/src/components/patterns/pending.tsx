@@ -1,4 +1,4 @@
-import { useLocation, useNavigation } from "@modern-js/runtime/router";
+import { useNavigation } from "@modern-js/runtime/router";
 
 /**
  * The URL the router is currently navigating to (`pathname + search`), or `null`
@@ -10,14 +10,4 @@ export function usePendingHref(): string | null {
   const nav = useNavigation();
   if (!nav.location) return null;
   return `${nav.location.pathname}${nav.location.search}`;
-}
-
-/**
- * True while the router is navigating to a *different pathname* (a real
- * page-to-page move) rather than only changing the query string.
- */
-export function useChangingPage(): boolean {
-  const nav = useNavigation();
-  const { pathname } = useLocation();
-  return nav.state === "loading" && !!nav.location && nav.location.pathname !== pathname;
 }

@@ -56,17 +56,3 @@ export function TableSkeleton({ rows = 8, cols = 4 }: { rows?: number; cols?: nu
     </div>
   );
 }
-
-export function CardsRowSkeleton({ count = 3 }: { count?: number }) {
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="space-y-3 rounded-xl border p-5">
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-7 w-32" />
-          <Skeleton className="h-3 w-24" />
-        </div>
-      ))}
-    </div>
-  );
-}

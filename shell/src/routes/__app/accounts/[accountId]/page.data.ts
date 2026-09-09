@@ -1,6 +1,5 @@
 import { defer, type ActionFunctionArgs, type LoaderFunctionArgs } from "@modern-js/runtime/router";
 import type { TransactionCategory } from "@/mock";
-import { getSession } from "@/mock/session";
 import {
   loadAccountDetail,
   loadAccountHeader,
@@ -10,7 +9,6 @@ import {
 } from "accounts/data";
 
 export const loader = async ({ params, request }: LoaderFunctionArgs) => {
-  getSession(request);
   const accountId = params.accountId!;
   const url = new URL(request.url);
   const txnId = url.searchParams.get("txn");

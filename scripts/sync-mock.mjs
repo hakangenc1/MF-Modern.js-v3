@@ -1,7 +1,8 @@
 // Keep the mock data layer identical across the four data-owning apps.
 //
 // `shell/src/mock/` is the source of truth. `twofactor` is excluded — it only
-// has its own tiny `mock/verify.ts`. Run after editing any mock file:
+// has its own tiny `mock/verify.ts`. `session.ts` is shell-only (the remotes
+// have no auth), so it is not in the sync set. Run after editing any mock file:
 //
 //   node scripts/sync-mock.mjs           # copy shell -> accounts, payments, security
 //   node scripts/sync-mock.mjs --check   # exit 1 if any target has drifted
@@ -10,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const FILES = ["types.ts", "seed.ts", "index.ts", "format.ts", "delay.ts", "session.ts"];
+const FILES = ["types.ts", "seed.ts", "index.ts", "format.ts", "delay.ts"];
 const TARGETS = ["accounts", "payments", "security"];
 const check = process.argv.includes("--check");
 

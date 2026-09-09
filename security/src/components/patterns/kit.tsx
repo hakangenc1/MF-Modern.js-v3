@@ -93,23 +93,6 @@ export function PageHeader({
   );
 }
 
-export function SectionTitle({
-  children,
-  action,
-}: {
-  children: React.ReactNode;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <h2 className="text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
-        {children}
-      </h2>
-      {action}
-    </div>
-  );
-}
-
 /**
  * One figure in a strip of KPIs — a label over a tabular value, no card of its
  * own. Put several in a `grid` / `flex` row inside one panel.

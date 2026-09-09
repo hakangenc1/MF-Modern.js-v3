@@ -1,11 +1,7 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@modern-js/runtime/router";
-import { getSession } from "@/mock/session";
+import type { ActionFunctionArgs } from "@modern-js/runtime/router";
 import { cancelScheduledTransfer, loadTransfers, toggleRecurring } from "payments/data";
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  getSession(request);
-  return loadTransfers();
-};
+export const loader = async () => loadTransfers();
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const form = await request.formData();
