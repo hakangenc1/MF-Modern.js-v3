@@ -2,10 +2,19 @@ import { useEffect, useState } from "react";
 import { useRouteError, isRouteErrorResponse } from "@modern-js/runtime/router";
 import { Button } from "@/components/ui/button";
 
+/** Coerce an unknown route-error value to a displayable string. */
+function asText(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (value && typeof value === "object") {
+    const m = (value as { message?: unknown }).message;
+    if (typeof m === "string") return m.trim();
+  }
+  return "";
+}
+
 export default function ErrorBoundary() {
   const error = useRouteError();
-  const message =
-    error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  const message = asText(isRouteErrorResponse(error) ? error.data : error);
   // A cold free-tier remote returns its HTML "waking up" page instead of the
   // federation manifest — recoverable in ~30s, so offer an auto-retry.
   const warming = /manifest|Federation|Unexpected token '<'|RUNTIME-003/i.test(message);
@@ -37,12 +46,13 @@ export default function ErrorBoundary() {
     );
   }
 
-  const title = isRouteErrorResponse(error)
-    ? `${error.status} ${error.statusText}`
-    : "Something went wrong";
-  const detail = isRouteErrorResponse(error)
-    ? error.data || "The page you’re looking for isn’t here."
-    : message || "An unexpected error occurred.";
+  const title =
+    (isRouteErrorResponse(error) && `${error.status} ${error.statusText}`.trim()) ||
+    "Something went wrong";
+  // `message` is already coerced to a string above — a route-error `.data` can be
+  // a serialized error object in dev, and handing a non-string to JSX would make
+  // the boundary itself throw (blank screen).
+  const detail = message || "An unexpected error occurred.";
 
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-4 px-6 text-center">

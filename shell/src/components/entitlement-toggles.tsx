@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useFetcher } from "@modern-js/runtime/router";
+import { useFetcher, useLocation } from "@modern-js/runtime/router";
 import { RotateCcw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ export function EntitlementToggles({
   personaDefaults: Entitlement[];
 }) {
   const fetcher = useFetcher();
+  const { pathname, search } = useLocation();
   const [optimistic, setOptimistic] = useState<Set<string> | null>(null);
   const active = optimistic ?? new Set<string>(current);
 
@@ -46,7 +47,12 @@ export function EntitlementToggles({
   const commit = (next: Set<string>) => {
     setOptimistic(next);
     const value = ALL_ENTITLEMENTS.filter((e) => next.has(e)).join(",");
-    fetcher.submit({ value }, { method: "post", action: "/entitlements" });
+    // `from` lets the action redirect us back here — a clean navigation re-runs
+    // every loader with the new grants without aborting in-flight defer() promises.
+    fetcher.submit(
+      { value, from: `${pathname}${search}` },
+      { method: "post", action: "/entitlements" },
+    );
   };
 
   const toggle = (e: Entitlement) => {

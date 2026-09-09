@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, Money, StatTile, SectionCard } from "@/components/patterns/kit";
 import { NetWorthTrend } from "@/components/patterns/charts";
-import { ActivityListSkeleton, ChartSkeleton } from "@/components/patterns/skeletons";
+import { ActivityListSkeleton, AwaitError, ChartSkeleton } from "@/components/patterns/skeletons";
 import {
   BudgetSummaryCard,
   CashflowCard,
@@ -167,11 +167,15 @@ export default function Dashboard() {
       <div className="mt-4 grid gap-4 lg:grid-cols-3 cv-auto">
         <div className="lg:col-span-2">
           <Suspense fallback={<CardShell title="Cash flow"><ChartSkeleton /></CardShell>}>
-            <Await resolve={cashflow}>{(d) => <CashflowCard data={d} />}</Await>
+            <Await resolve={cashflow} errorElement={<CardShell title="Cash flow"><AwaitError label="cash flow" /></CardShell>}>
+              {(d) => <CashflowCard data={d} />}
+            </Await>
           </Suspense>
         </div>
         <Suspense fallback={<CardShell title="Spending by category"><ChartSkeleton /></CardShell>}>
-          <Await resolve={spending}>{(d) => <SpendingCard data={d} />}</Await>
+          <Await resolve={spending} errorElement={<CardShell title="Spending by category"><AwaitError label="spending" /></CardShell>}>
+            {(d) => <SpendingCard data={d} />}
+          </Await>
         </Suspense>
       </div>
 
@@ -180,7 +184,9 @@ export default function Dashboard() {
           <Suspense
             fallback={<CardShell title="Recent activity"><ActivityListSkeleton /></CardShell>}
           >
-            <Await resolve={activity}>{(d) => <RecentActivityCard data={d} />}</Await>
+            <Await resolve={activity} errorElement={<CardShell title="Recent activity"><AwaitError label="recent activity" /></CardShell>}>
+              {(d) => <RecentActivityCard data={d} />}
+            </Await>
           </Suspense>
         </div>
         <div className="space-y-4">

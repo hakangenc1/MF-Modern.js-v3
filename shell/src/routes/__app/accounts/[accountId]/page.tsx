@@ -4,7 +4,7 @@ import { Helmet } from "@modern-js/runtime/head";
 import type { Account, Page as MockPage, Transaction, TransactionCategory } from "@/mock";
 import AccountDetailView, { TransactionsTable } from "accounts/AccountDetailView";
 import TransactionDetail from "accounts/TransactionDetail";
-import { TableSkeleton } from "@/components/patterns/skeletons";
+import { AwaitError, TableSkeleton } from "@/components/patterns/skeletons";
 import { usePendingHref } from "@/components/patterns/pending";
 import {
   Sheet,
@@ -59,7 +59,7 @@ export default function AccountDetailPage() {
             pendingHref={pendingHref}
           >
             <Suspense fallback={<TableSkeleton rows={10} cols={5} />}>
-              <Await resolve={data.transactions}>
+              <Await resolve={data.transactions} errorElement={<AwaitError label="transactions" />}>
                 {(page: MockPage<Transaction>) => (
                   <TransactionsTable
                     page={page}
@@ -84,7 +84,7 @@ export default function AccountDetailPage() {
                 <SheetTitle>Transaction</SheetTitle>
               </SheetHeader>
               <Suspense fallback={<TableSkeleton rows={6} cols={2} />}>
-                <Await resolve={data.txn}>
+                <Await resolve={data.txn} errorElement={<AwaitError label="this transaction" />}>
                   {(txn: Transaction | null) => {
                     const current = fetcher.data?.txn ?? txn;
                     if (!current) {
