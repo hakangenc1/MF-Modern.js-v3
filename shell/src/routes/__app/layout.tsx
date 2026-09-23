@@ -63,7 +63,7 @@ export default function AppLayout() {
         ))}
       </Helmet>
       <NavProgress />
-      <AppSidebar shellVersion={shellVersion} remoteVersions={remoteVersions} />
+      <AppSidebar shellVersion={shellVersion} remoteVersions={remoteVersions} remotes={remotes} />
       <SidebarInset>
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur">
           <SidebarTrigger className="-ml-1" />

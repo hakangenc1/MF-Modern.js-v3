@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "@modern-js/runtime/router";
 import {
   LayoutDashboard,
@@ -31,7 +31,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useEntitlements, type Entitlement } from "@/lib/entitlements";
-import type { RemoteVersion } from "@/lib/remote-versions";
+import { fetchRemoteVersions, type RemoteVersion } from "@/lib/remote-versions";
 
 type NavChild = { title: string; to: string; need?: Entitlement };
 type NavItem = {
@@ -92,13 +92,37 @@ const NAV: { label: string; items: NavItem[] }[] = [
 export function AppSidebar({
   shellVersion,
   remoteVersions,
+  remotes,
 }: {
   shellVersion: string;
   remoteVersions: RemoteVersion[];
+  remotes: { name: string; origin: string }[];
 }) {
   const { pathname } = useLocation();
   const entitlements = useEntitlements();
   const allowed = (need?: Entitlement) => !need || entitlements.includes(need);
+
+  // The server-rendered `remoteVersions` prop only reflects whatever was live
+  // at the *last full page load* — Modern.js's in-app navigation only re-runs
+  // the leaf route's loader, never this shared layout's (see the note in
+  // layout.data.ts). Re-fetch client-side on every navigation instead, so a
+  // remote that redeploys mid-session shows up without a hard refresh.
+  const [versions, setVersions] = useState(remoteVersions);
+  const skipNextFetch = useRef(true);
+  useEffect(() => {
+    if (skipNextFetch.current) {
+      skipNextFetch.current = false; // first render already has server data
+      return;
+    }
+    let cancelled = false;
+    fetchRemoteVersions(remotes).then((v) => {
+      if (!cancelled) setVersions(v);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   const groups = NAV.map((group) => ({
     ...group,
@@ -177,7 +201,7 @@ export function AppSidebar({
           <div className="mt-1 grid grid-cols-[1fr_auto] gap-x-2 gap-y-0.5 text-[11px] tabular-nums">
             <span className="text-muted-foreground">shell</span>
             <span className="text-right font-mono text-foreground">v{shellVersion}</span>
-            {remoteVersions.map((r) => (
+            {versions.map((r) => (
               <Fragment key={r.name}>
                 <span className="capitalize text-muted-foreground">{r.name}</span>
                 <span

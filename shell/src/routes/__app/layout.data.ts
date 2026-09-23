@@ -54,10 +54,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   return {};
 };
 
-// Modern.js's client router only re-runs the *leaf* route's loader on a plain
-// in-app navigation — a request like `/accounts?__loader=__app%2Faccounts%2Fpage`
-// never names this shared __app layout, so its data (remote versions, the
-// entitlements badge, notifications) stays frozen at whatever it was on the
-// last full page load until one happens again. Force it to revalidate on
-// every navigation instead, same as the leaf routes already do by default.
-export const shouldRevalidate = () => true;
+// NOTE: a `shouldRevalidate` export here does *not* fix staleness on plain
+// in-app navigation, even though @modern-js/runtime's route codegen wires one
+// up per-route. Verified: the client's actual navigation request
+// (`/x?__loader=__app%2Fx%2Fpage&__ssrDirect=true`) only ever names the leaf
+// route — this shared layout's loader isn't re-run no matter what
+// shouldRevalidate returns, for reasons not worth chasing further into
+// minified framework internals. AppSidebar instead re-fetches remote
+// versions itself, client-side, on every pathname change — see
+// shell/src/components/app-sidebar.tsx.
