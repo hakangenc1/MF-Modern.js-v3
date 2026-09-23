@@ -3,17 +3,17 @@ import type { Entitlement, NotificationItem, User } from "@/mock";
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from "@/mock";
 import { getSession, loginRedirect } from "@/mock/session";
 import { serverStamp, type ServerStamp } from "@/lib/ssr";
-import { remoteOrigins } from "@/lib/remote-origins";
-import { fetchRemoteVersions, type RemoteVersion } from "@/lib/remote-versions";
+import { remoteList } from "@/lib/remote-origins";
 
 export type AppLayoutData = {
   user: User;
   /** Effective entitlements — drives the sidebar/route gating via context. */
   entitlements: Entitlement[];
   render: ServerStamp;
-  remoteOrigins: string[];
-  /** Live build version of each remote, straight from its own mf-manifest.json. */
-  remoteVersions: RemoteVersion[];
+  /** Name + public origin of every remote — preconnect hints, and where the
+   * "How this page was rendered" popover fetches live versions from
+   * (client-side, on demand — see shell/src/lib/remote-versions.ts). */
+  remotes: { name: string; origin: string }[];
   notifications: NotificationItem[];
   unreadCount: number;
 };
@@ -23,16 +23,12 @@ export const loader = async ({
 }: LoaderFunctionArgs): Promise<AppLayoutData | Response> => {
   const session = getSession(request);
   if (!session) return loginRedirect(request);
-  const [notifications, remoteVersions] = await Promise.all([
-    getNotifications(),
-    fetchRemoteVersions(),
-  ]);
+  const notifications = await getNotifications();
   return {
     user: session.user,
     entitlements: session.entitlements,
     render: serverStamp("shell"),
-    remoteOrigins: remoteOrigins(),
-    remoteVersions,
+    remotes: remoteList(),
     notifications,
     unreadCount: notifications.filter((n) => !n.read).length,
   };

@@ -15,9 +15,3 @@ export function remoteList(): { name: string; origin: string }[] {
     origin: process.env[`${name.toUpperCase()}_ORIGIN`] ?? `http://localhost:${port}`,
   }));
 }
-
-/** Used to emit `<link rel="preconnect">` so the client-side federation
- * manifest / entry fetches don't pay a fresh TLS handshake mid-navigation. */
-export function remoteOrigins(): string[] {
-  return remoteList().map((r) => r.origin);
-}

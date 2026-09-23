@@ -45,7 +45,7 @@ const LABELS: Record<string, string> = {
 };
 
 export default function AppLayout() {
-  const { user, entitlements, remoteOrigins, notifications, unreadCount } =
+  const { user, entitlements, remotes, notifications, unreadCount } =
     useLoaderData() as AppLayoutData;
   // Stable reference so context consumers don't re-render mid-hydration.
   const grants = useMemo(() => entitlements, [entitlements.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -58,8 +58,8 @@ export default function AppLayout() {
     <EntitlementsProvider value={grants}>
     <SidebarProvider>
       <Helmet>
-        {remoteOrigins.map((o) => (
-          <link key={o} rel="preconnect" href={o} crossOrigin="anonymous" />
+        {remotes.map((r) => (
+          <link key={r.name} rel="preconnect" href={r.origin} crossOrigin="anonymous" />
         ))}
       </Helmet>
       <NavProgress />
