@@ -1505,8 +1505,8 @@ npm run dev            <span class="c"># → http://localhost:3000</span>
         tab left open) keeps asking a URL that a proxy or the browser's own HTTP cache
         insists it already has the answer to; Network tab shows
         <code>(memory cache)</code> / <code>(disk cache)</code> instead of a real request
-        going out. <code>deploy/Caddyfile</code> splits the two policies by path, identically
-        on all five hosts:
+        going out. <code>deploy/caddy/Caddyfile</code> splits the two policies by path,
+        identically on all five hosts:
       </p>
     </div>
 
@@ -1533,9 +1533,29 @@ npm run dev            <span class="c"># → http://localhost:3000</span>
         Before this split, neither file shape set <code>Cache-Control</code> at all &mdash;
         undefined, implementation-dependent caching instead of a deliberate policy.
         <code>deploy/up.sh</code> reloads Caddy (<code>caddy reload --config</code>) on
-        every deploy, since the Caddyfile is bind-mounted and <code>docker compose up</code>
-        only recreates a container when its image or service definition changes &mdash;
-        never just because the file it mounts changed content.
+        every deploy, since <code>docker compose up</code> only recreates a container when
+        its image or service definition changes &mdash; never just because a file it mounts
+        changed content.
+      </p>
+    </div>
+
+    <div class="note note--warn">
+      <span class="label">The other kind of stale cache: Docker's own bind mount</span>
+      <p>
+        The first version of this fix shipped as
+        <code>./Caddyfile:/etc/caddy/Caddyfile:ro</code> &mdash; a <em>single-file</em> bind
+        mount &mdash; and silently did nothing: <code>caddy reload</code> kept succeeding
+        against the <strong>old</strong> Caddyfile. A single-file bind mount is pinned to
+        that file's inode at container-create time; <code>git reset --hard</code> replaces
+        the file (new inode) rather than editing it in place, so the mount never followed.
+        The fix was the same shape as the cache-header bug it was hiding: <code>Caddyfile</code>
+        moved into its own <code>deploy/caddy/</code> folder, mounted as a
+        <em>directory</em> (<code>./caddy:/etc/caddy:ro</code>) &mdash; directory mounts
+        re-resolve the file on every access, so <code>caddy reload</code> sees what's
+        actually on disk. Caught by <code>caddy adapt</code>'s compiled JSON output having
+        zero <code>"handler": "headers"</code> entries despite the Caddyfile parsing without
+        error &mdash; a plain curl of the live response headers wouldn't have explained why
+        on its own.
       </p>
     </div>
 

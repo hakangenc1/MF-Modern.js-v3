@@ -111,7 +111,14 @@ services:
     environment:
       BASE_DOMAIN: "${BASE_DOMAIN}"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # A *directory* bind mount, not a single-file one: Docker pins a
+      # single-file mount to that file's inode at container-create time, so a
+      # `git reset --hard` (which replaces the file, not edits it in place)
+      # silently leaves the container serving a stale Caddyfile forever after
+      # — `caddy reload` then "succeeds" against content that never changed.
+      # Mounting the parent directory instead means the container always
+      # resolves Caddyfile fresh off the host.
+      - ./caddy:/etc/caddy:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:

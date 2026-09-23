@@ -529,7 +529,7 @@ silently doesn't take effect until the cache expires — the shell (or a tab lef
 asking a URL that a proxy or the browser's own HTTP cache insists it already has the answer
 to; Network tab shows `(memory cache)` / `(disk cache)` instead of a real request going out.
 
-`deploy/Caddyfile` splits the two policies by path, identically on all five hosts:
+`deploy/caddy/Caddyfile` splits the two policies by path, identically on all five hosts:
 
 | Path | `Cache-Control` | Why |
 |---|---|---|
@@ -538,9 +538,21 @@ to; Network tab shows `(memory cache)` / `(disk cache)` instead of a real reques
 
 Before this split, neither file shape set `Cache-Control` at all — undefined, implementation-
 dependent caching instead of a deliberate policy. `deploy/up.sh` reloads Caddy
-(`caddy reload --config`) on every deploy, since the Caddyfile is bind-mounted and `docker
-compose up` only recreates a container when its image or service definition changes — never
-just because the file it mounts changed content.
+(`caddy reload --config`) on every deploy, since `docker compose up` only recreates a
+container when its image or service definition changes — never just because a file it mounts
+changed content.
+
+> **The other kind of stale cache: Docker's own bind mount.** The first version of this fix
+> shipped as `./Caddyfile:/etc/caddy/Caddyfile:ro` — a *single-file* bind mount — and silently
+> did nothing: `caddy reload` kept succeeding against the **old** Caddyfile. A single-file bind
+> mount is pinned to that file's inode at container-create time; `git reset --hard` replaces
+> the file (new inode) rather than editing it in place, so the mount never followed. The fix
+> was the same shape as the cache-header bug it was hiding: `Caddyfile` moved into its own
+> `deploy/caddy/` folder, mounted as a *directory* (`./caddy:/etc/caddy:ro`) — directory
+> mounts re-resolve the file on every access, so `caddy reload` sees what's actually on disk.
+> Caught by `caddy adapt`'s compiled JSON output having zero `"handler": "headers"` entries
+> despite the Caddyfile parsing without error — the fix an unconditional curl of the live
+> response headers wouldn't have explained on its own.
 
 **In a real multi-repo org** this is five separate CI/CD pipelines, one per app, each free to
 deploy on its own schedule; here it's one VM and one `docker compose build` that happens to

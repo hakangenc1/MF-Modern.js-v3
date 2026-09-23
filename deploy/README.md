@@ -12,7 +12,7 @@ one always-on machine.
 | `Dockerfile` | Shared build for the four remotes; context is that app's folder. |
 | `Dockerfile.shell` | Shell build; context is the **repo root** so Tailwind can `@source`-scan the remotes' src for their federated utility classes. |
 | `docker-compose.yml` | The five apps + `caddy`. Origins baked at build, re-passed at runtime. |
-| `Caddyfile` | Auto-HTTPS for `{shell,accounts,payments,security,twofactor}.$BASE_DOMAIN`. |
+| `caddy/Caddyfile` | Auto-HTTPS for `{shell,accounts,payments,security,twofactor}.$BASE_DOMAIN` + the `/static/*` cache policy. Lives in its own subfolder so it's a *directory* bind mount — see the comment on `caddy.volumes` in `docker-compose.yml`. |
 | `.env.example` | `BASE_DOMAIN` + `SESSION_SECRET`. Copy to `.env` (gitignored). |
 | `up.sh` | `git reset --hard origin/main` + rebuild + restart. The redeploy command. |
 
