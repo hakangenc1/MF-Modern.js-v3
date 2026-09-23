@@ -1,9 +1,8 @@
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMatches } from "@modern-js/runtime/router";
 import { MonitorSmartphone, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { fetchRemoteVersions, type RemoteVersion } from "@/lib/remote-versions";
 
 export interface ServerRenderInfo {
   where: "server";
@@ -37,6 +36,10 @@ const cleanText = (el: Element | null) => (el?.textContent ?? "").replace(/\s+/g
  * The popover's "Compare" button re-fetches the current URL and measures the
  * HTML the server sent against what's in the live DOM now — so the SSR vs CSR
  * difference is concrete, not just a claim.
+ *
+ * (Live remote versions used to live in this popover too — moved to the
+ * sidebar footer, which is always on screen, so it's worth fetching eagerly
+ * server-side; see shell/src/lib/remote-versions.ts.)
  */
 export function RenderStamp() {
   const matches = useMatches();
@@ -44,30 +47,9 @@ export function RenderStamp() {
   const server = (leaf?.data as { render?: ServerRenderInfo | null } | undefined)?.render ?? null;
   const isServer = !!server;
 
-  // The remote list lives on the shared __app layout route, not necessarily
-  // on the deepest match — look it up separately.
-  const layoutMatch = matches.find((m) => m.data && "remotes" in (m.data as object));
-  const remotes =
-    (layoutMatch?.data as { remotes?: { name: string; origin: string }[] } | undefined)
-      ?.remotes ?? [];
-
   const [clientAt, setClientAt] = useState<string | null>(null);
   const [report, setReport] = useState<Inspection | null>(null);
   const [busy, setBusy] = useState(false);
-  // Fetched lazily, only while the popover is open — see remote-versions.ts
-  // for why this isn't done eagerly in the loader on every navigation.
-  const [remoteVersions, setRemoteVersions] = useState<RemoteVersion[] | null>(null);
-  const [versionsBusy, setVersionsBusy] = useState(false);
-
-  const loadVersions = async () => {
-    if (versionsBusy || remotes.length === 0) return;
-    setVersionsBusy(true);
-    try {
-      setRemoteVersions(await fetchRemoteVersions(remotes));
-    } finally {
-      setVersionsBusy(false);
-    }
-  };
   // Mount the Radix Popover only after hydration. Radix `useId` is numbered by
   // tree position and Modern.js streaming SSR can flush the header inside a
   // Suspense boundary whose id-space differs from the client's, which shows up
@@ -131,7 +113,7 @@ export function RenderStamp() {
   }
 
   return (
-    <Popover onOpenChange={(open) => open && loadVersions()}>
+    <Popover>
       <PopoverTrigger asChild>
         <button type="button" className={badgeClass} title="How this page was rendered">
           {badgeInner}
@@ -164,41 +146,6 @@ export function RenderStamp() {
             </p>
           </div>
         )}
-
-        <div className="mt-3 space-y-1.5 border-t pt-3">
-          <p className="text-xs font-medium text-foreground">Federated remotes, live right now</p>
-          {remoteVersions ? (
-            <>
-              <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-xs tabular-nums">
-                {remoteVersions.map((r) => (
-                  <Fragment key={r.name}>
-                    <span className="capitalize text-muted-foreground">{r.name}</span>
-                    <span
-                      className={
-                        r.version
-                          ? "text-right font-mono text-foreground"
-                          : "text-right text-[color:var(--warning)]"
-                      }
-                    >
-                      {r.version ? `v${r.version}` : "unreachable"}
-                    </span>
-                  </Fragment>
-                ))}
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Each remote ships on its own schedule — this is that remote's own{" "}
-                <span className="font-mono">package.json</span> version, fetched from its{" "}
-                <span className="font-mono">mf-manifest.json</span> just now (that file is
-                deliberately never cached — see §08a). Redeploying one remote never touches
-                the others.
-              </p>
-            </>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              {versionsBusy ? "Fetching…" : "—"}
-            </p>
-          )}
-        </div>
 
         <Button
           size="sm"

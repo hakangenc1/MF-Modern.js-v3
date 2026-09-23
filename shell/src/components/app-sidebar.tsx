@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { NavLink, useLocation } from "@modern-js/runtime/router";
 import {
   LayoutDashboard,
@@ -30,6 +31,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useEntitlements, type Entitlement } from "@/lib/entitlements";
+import type { RemoteVersion } from "@/lib/remote-versions";
 
 type NavChild = { title: string; to: string; need?: Entitlement };
 type NavItem = {
@@ -87,7 +89,13 @@ const NAV: { label: string; items: NavItem[] }[] = [
   },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({
+  shellVersion,
+  remoteVersions,
+}: {
+  shellVersion: string;
+  remoteVersions: RemoteVersion[];
+}) {
   const { pathname } = useLocation();
   const entitlements = useEntitlements();
   const allowed = (need?: Entitlement) => !need || entitlements.includes(need);
@@ -162,6 +170,29 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
+        <div className="group-data-[collapsible=icon]:hidden border-t px-2 pb-1 pt-2">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Versions
+          </p>
+          <div className="mt-1 grid grid-cols-[1fr_auto] gap-x-2 gap-y-0.5 text-[11px] tabular-nums">
+            <span className="text-muted-foreground">shell</span>
+            <span className="text-right font-mono text-foreground">v{shellVersion}</span>
+            {remoteVersions.map((r) => (
+              <Fragment key={r.name}>
+                <span className="capitalize text-muted-foreground">{r.name}</span>
+                <span
+                  className={
+                    r.version
+                      ? "text-right font-mono text-foreground"
+                      : "text-right text-[color:var(--warning)]"
+                  }
+                >
+                  {r.version ? `v${r.version}` : "—"}
+                </span>
+              </Fragment>
+            ))}
+          </div>
+        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Help & support">

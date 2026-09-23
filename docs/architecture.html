@@ -1450,10 +1450,12 @@ npm run dev            <span class="c"># → http://localhost:3000</span>
         which every app deliberately pins <strong>identical</strong> because Module
         Federation is fragile across minor versions there. A remote's own
         <code>package.json</code> version is the opposite: deliberately
-        <strong>independent</strong>, one per app. The shell's &ldquo;How this page was
-        rendered&rdquo; popover (top-right, any page) shows every remote's live version
-        &mdash; a small server-side fetch of each <code>mf-manifest.json</code>, the same
-        file MF's own runtime already reads to resolve the remote.
+        <strong>independent</strong>, one per app. The sidebar footer shows every app's live
+        version &mdash; shell's own (compiled in at build time, so it costs nothing to show)
+        plus each remote's, fetched server-side in the layout loader from its
+        <code>mf-manifest.json</code>, the same file MF's own runtime already reads to
+        resolve the remote. Fetched eagerly rather than lazily: this is on screen on every
+        page, so it belongs in the first HTML, not a client round trip after the fact.
       </p>
     </div>
 

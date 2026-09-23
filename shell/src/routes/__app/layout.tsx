@@ -45,7 +45,7 @@ const LABELS: Record<string, string> = {
 };
 
 export default function AppLayout() {
-  const { user, entitlements, remotes, notifications, unreadCount } =
+  const { user, entitlements, remotes, shellVersion, remoteVersions, notifications, unreadCount } =
     useLoaderData() as AppLayoutData;
   // Stable reference so context consumers don't re-render mid-hydration.
   const grants = useMemo(() => entitlements, [entitlements.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -63,7 +63,7 @@ export default function AppLayout() {
         ))}
       </Helmet>
       <NavProgress />
-      <AppSidebar />
+      <AppSidebar shellVersion={shellVersion} remoteVersions={remoteVersions} />
       <SidebarInset>
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur">
           <SidebarTrigger className="-ml-1" />

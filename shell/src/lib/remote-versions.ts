@@ -6,12 +6,14 @@
  * build time, with nothing to wire up.
  *
  * `mf-manifest.json` is served `Cache-Control: no-cache` (see deploy/caddy/
- * Caddyfile) so this is a genuine network round trip every time, not a
- * memory-cache hit — deliberately: called client-side, on demand, only when
- * someone actually opens the "How this page was rendered" popover, instead
- * of on every server render. It has no server-only dependency (takes plain
- * origin strings, already public and CORS-enabled) so it runs identically
- * in the browser or in a loader.
+ * Caddyfile), so every call here is a genuine network round trip, not a
+ * cache hit — that's the price of it always being live and never stale.
+ * Called from `__app/layout.data.ts`'s loader (server-side, on every
+ * navigation) because the result is shown *persistently* in the sidebar
+ * footer, not tucked behind a click — if it's always on screen, it's worth
+ * fetching eagerly so it's part of the first HTML, not a post-hydration
+ * flash. Takes plain origin strings (no server-only dependency), so it would
+ * also run fine client-side if a future caller needed that.
  */
 export interface RemoteVersion {
   name: string;

@@ -504,9 +504,13 @@ Don't confuse this with the **version matrix** in §04 — that's the shared *to
 because Module Federation is fragile across minor versions there. A remote's own
 `package.json` version is the opposite: deliberately **independent**, one per app.
 
-The shell's "How this page was rendered" popover (top-right, any page) shows every remote's
-live version — a small server-side fetch of each `mf-manifest.json`, the same file MF's own
-runtime already reads to resolve the remote (`shell/src/lib/remote-versions.ts`).
+The sidebar footer shows every app's live version — shell's own (compiled in at build time
+via `source.define` in `modern.config.ts`, so displaying it costs nothing) plus each
+remote's, fetched server-side in the `__app` layout loader from its `mf-manifest.json`
+(`shell/src/lib/remote-versions.ts`) — the same file MF's own runtime already reads to
+resolve the remote. Fetched eagerly, not lazily: unlike a debug panel behind a click, this
+is on screen on every page, so it belongs in the initial server-rendered HTML rather than
+appearing after a client-side round trip.
 
 ### The cache trap this creates
 

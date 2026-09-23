@@ -1,5 +1,6 @@
 import { appTools, defineConfig } from "@modern-js/app-tools";
 import { moduleFederationPlugin } from "@module-federation/modern-js-v3";
+import pkg from "./package.json";
 
 const PORT = Number(process.env.PORT || 3000);
 // Set SHELL_ORIGIN to a CDN/base URL in production so hashed assets are served
@@ -8,6 +9,13 @@ const ASSET_PREFIX = process.env.SHELL_ORIGIN ?? process.env.RENDER_EXTERNAL_URL
 
 // https://modernjs.dev/en/configure/app/usage
 export default defineConfig({
+  source: {
+    // Baked in at build time (not read from disk at runtime — the production
+    // image never ships shell/package.json, only .output/). Shown next to
+    // the remotes' live versions in the sidebar footer; unlike theirs, this
+    // one costs nothing to display — no fetch, just a compiled-in string.
+    define: { "process.env.SHELL_VERSION": JSON.stringify(pkg.version) },
+  },
   server: {
     port: PORT,
     // Streaming SSR: flush the shell first, stream <Suspense> content as it resolves.

@@ -95,11 +95,12 @@ standalone on :3001 with its own routes.
 - **Streaming**: the dashboard flushes the shell first, then streams the cash‑flow /
   spending charts and recent‑activity list in through `<Suspense>` / `<Await>` (the mock
   data has artificial latency so the skeleton → content swap is visible).
-- **That same badge's popover also lists every remote's live version** — read straight
-  from each remote's `mf-manifest.json` (`metaData.buildInfo.buildVersion`, which Module
-  Federation fills in from that app's own `package.json`, no wiring required). Bump
-  `accounts/package.json`'s version and redeploy only accounts — the badge updates,
-  nothing else does. See [`docs/ARCHITECTURE.md` §08a](docs/ARCHITECTURE.md#08a--independent-versions--the-cache-trap)
+- **The sidebar footer lists every app's live version** — shell's own (compiled in at build
+  time) plus each remote's, read straight from its `mf-manifest.json`
+  (`metaData.buildInfo.buildVersion`, which Module Federation fills in from that app's own
+  `package.json`, no wiring required). Bump `accounts/package.json`'s version and redeploy
+  only accounts — that one line updates, nothing else does. See
+  [`docs/ARCHITECTURE.md` §08a](docs/ARCHITECTURE.md#08a--independent-versions--the-cache-trap)
   for how that stays safe against stale caches.
 
 ## Stack

@@ -4,16 +4,22 @@ import { getNotifications, markAllNotificationsRead, markNotificationRead } from
 import { getSession, loginRedirect } from "@/mock/session";
 import { serverStamp, type ServerStamp } from "@/lib/ssr";
 import { remoteList } from "@/lib/remote-origins";
+import { fetchRemoteVersions, type RemoteVersion } from "@/lib/remote-versions";
 
 export type AppLayoutData = {
   user: User;
   /** Effective entitlements — drives the sidebar/route gating via context. */
   entitlements: Entitlement[];
   render: ServerStamp;
-  /** Name + public origin of every remote — preconnect hints, and where the
-   * "How this page was rendered" popover fetches live versions from
-   * (client-side, on demand — see shell/src/lib/remote-versions.ts). */
+  /** Name + public origin of every remote — used for preconnect hints. */
   remotes: { name: string; origin: string }[];
+  /** Shell's own version — compiled in at build time (see modern.config.ts),
+   * not fetched. Shown next to the remotes' versions in the sidebar footer. */
+  shellVersion: string;
+  /** Each remote's live build version, straight from its own mf-manifest.json
+   * — fetched here (not lazily) because it's always on screen now, in the
+   * sidebar footer, not hidden behind a click. */
+  remoteVersions: RemoteVersion[];
   notifications: NotificationItem[];
   unreadCount: number;
 };
@@ -23,12 +29,18 @@ export const loader = async ({
 }: LoaderFunctionArgs): Promise<AppLayoutData | Response> => {
   const session = getSession(request);
   if (!session) return loginRedirect(request);
-  const notifications = await getNotifications();
+  const remotes = remoteList();
+  const [notifications, remoteVersions] = await Promise.all([
+    getNotifications(),
+    fetchRemoteVersions(remotes),
+  ]);
   return {
     user: session.user,
     entitlements: session.entitlements,
     render: serverStamp("shell"),
-    remotes: remoteList(),
+    remotes,
+    shellVersion: process.env.SHELL_VERSION ?? "0.0.0",
+    remoteVersions,
     notifications,
     unreadCount: notifications.filter((n) => !n.read).length,
   };
