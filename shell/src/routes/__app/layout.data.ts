@@ -53,3 +53,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (intent === "read") return { notifications: await markNotificationRead(String(form.get("id"))) };
   return {};
 };
+
+// Modern.js's client router only re-runs the *leaf* route's loader on a plain
+// in-app navigation — a request like `/accounts?__loader=__app%2Faccounts%2Fpage`
+// never names this shared __app layout, so its data (remote versions, the
+// entitlements badge, notifications) stays frozen at whatever it was on the
+// last full page load until one happens again. Force it to revalidate on
+// every navigation instead, same as the leaf routes already do by default.
+export const shouldRevalidate = () => true;
