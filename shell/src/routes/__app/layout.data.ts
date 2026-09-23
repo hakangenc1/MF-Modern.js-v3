@@ -4,6 +4,7 @@ import { getNotifications, markAllNotificationsRead, markNotificationRead } from
 import { getSession, loginRedirect } from "@/mock/session";
 import { serverStamp, type ServerStamp } from "@/lib/ssr";
 import { remoteOrigins } from "@/lib/remote-origins";
+import { fetchRemoteVersions, type RemoteVersion } from "@/lib/remote-versions";
 
 export type AppLayoutData = {
   user: User;
@@ -11,6 +12,8 @@ export type AppLayoutData = {
   entitlements: Entitlement[];
   render: ServerStamp;
   remoteOrigins: string[];
+  /** Live build version of each remote, straight from its own mf-manifest.json. */
+  remoteVersions: RemoteVersion[];
   notifications: NotificationItem[];
   unreadCount: number;
 };
@@ -20,12 +23,16 @@ export const loader = async ({
 }: LoaderFunctionArgs): Promise<AppLayoutData | Response> => {
   const session = getSession(request);
   if (!session) return loginRedirect(request);
-  const notifications = await getNotifications();
+  const [notifications, remoteVersions] = await Promise.all([
+    getNotifications(),
+    fetchRemoteVersions(),
+  ]);
   return {
     user: session.user,
     entitlements: session.entitlements,
     render: serverStamp("shell"),
     remoteOrigins: remoteOrigins(),
+    remoteVersions,
     notifications,
     unreadCount: notifications.filter((n) => !n.read).length,
   };

@@ -464,14 +464,90 @@ them compatible is the exposed module names and the shared React version — bot
 rarely and both are reviewed. A shell deploy is only needed when a route, a loader, or the
 page chrome changes.
 
-> **Known limitation — production SSR federation.** `modern serve` does not serve the SSR
-> remote-entry at `/bundles/static/remoteEntry.js`, so on a plain production deploy the
-> federated widgets fall back to **client rendering** — they still work, they just aren't
-> in the streamed HTML for those regions. Full SSR federation works in `npm run dev`.
->
-> Fix path: a small static middleware serving each remote's `dist/bundles/static/`, or the
-> `staticServePlugin` from `@module-federation/modern-js-v3` once its build-time init issue
-> is resolved for this Modern.js version.
+> **Production SSR federation needs a vendored patch.** `@module-federation/modern-js-v3`
+> 2.8.2's own SSR static middleware (which serves each remote's `dist/bundles/static/*` at
+> `<origin>/bundles/*` — what makes SSR federation possible in prod) ships two bugs:
+> `path.join("/", "/bundles")` breaks on Windows, and `Content-Length` is set from the JS
+> string's `.length` instead of its UTF-8 byte length, truncating any chunk with a non-ASCII
+> byte on **any** OS. Both are fixed by `patches/@module-federation__modern-js-v3@2.8.2.patch`
+> (a vendored `pnpm patch`, applied via `pnpm.patchedDependencies` in every app's
+> `package.json`) — without it, federated regions silently fall back to client rendering in
+> production even though `npm run dev` looks fine. Also required: `MODERN_MF_AUTO_CORS=true`
+> on every remote (see the Environment table above) — without it the manifest/entry fetch
+> succeeds but the browser blocks the response as a cross-origin request.
+
+## 08a · Independent versions & the cache trap
+
+Five separately-deployable apps means five separate release cadences — accounts ships a fix
+on Tuesday, nobody else redeploys. Two things have to hold for that to actually work without
+hand-coordinating or hunting a stale-cache bug afterward.
+
+### Each remote's own version, for free
+
+Module Federation reads it straight from that app's own `package.json` — no wiring, no extra
+step:
+
+```jsonc
+// GET https://accounts.example.com/static/mf-manifest.json
+{ "metaData": { "buildInfo": { "buildVersion": "1.4.0" } } }
+```
+
+Bump `accounts/package.json`'s `"version"`, rebuild and redeploy *only* accounts, and its
+manifest now says `1.4.0` while shell/payments/security/twofactor haven't rebuilt and still
+say whatever they were. The shell never declares or tracks a remote's version anywhere — it
+asks each remote's manifest at request time and gets today's truth. `scripts/gen-package-json.mjs`
+is careful never to reset this: it only fills in a version the first time an app's
+`package.json` doesn't exist yet, never on a regen.
+
+Don't confuse this with the **version matrix** in §04 — that's the shared *toolchain*
+(Rspack, `@module-federation/*`, React), which every app deliberately pins **identical**
+because Module Federation is fragile across minor versions there. A remote's own
+`package.json` version is the opposite: deliberately **independent**, one per app.
+
+The shell's "How this page was rendered" popover (top-right, any page) shows every remote's
+live version — a small server-side fetch of each `mf-manifest.json`, the same file MF's own
+runtime already reads to resolve the remote (`shell/src/lib/remote-versions.ts`).
+
+### The cache trap this creates
+
+Rspack hashes every real asset's filename from its content (`static/js/async/396.4495…js`,
+CSS, fonts) — a new build is a new URL, so those files are safe to cache forever. But a shell
+(or another remote) doesn't know that hash in advance; it discovers a remote through two
+files with a **fixed** name:
+
+```mermaid
+flowchart LR
+    S["shell<br/><small>(or payments/security discovering twofactor)</small>"]
+    M["GET /static/mf-manifest.json<br/><small>fixed name — lists today's hashed chunk URLs</small>"]
+    E["GET /static/remoteEntry.js<br/><small>fixed name — the federation container</small>"]
+    C["GET /static/js/async/396.4495…js<br/><small>hashed name — the actual code</small>"]
+    S -->|"① resolve"| M --> E -->|"② load"| C
+```
+
+If either fixed-name file is ever served from a stale cache, redeploying that one remote
+silently doesn't take effect until the cache expires — the shell (or a tab left open) keeps
+asking a URL that a proxy or the browser's own HTTP cache insists it already has the answer
+to; Network tab shows `(memory cache)` / `(disk cache)` instead of a real request going out.
+
+`deploy/Caddyfile` splits the two policies by path, identically on all five hosts:
+
+| Path | `Cache-Control` | Why |
+|---|---|---|
+| `/static/remoteEntry.js`, `/static/mf-manifest.json` | `no-cache` | Fixed name — always ask the origin before trusting a cached copy. A few KB, so revalidating every time is cheap. |
+| everything else under `/static/*` | `public, max-age=31536000, immutable` | Hashed name — a new build is a new URL, so the *old* URL's response never changes underneath a cached copy. Safe for a year. |
+
+Before this split, neither file shape set `Cache-Control` at all — undefined, implementation-
+dependent caching instead of a deliberate policy. `deploy/up.sh` reloads Caddy
+(`caddy reload --config`) on every deploy, since the Caddyfile is bind-mounted and `docker
+compose up` only recreates a container when its image or service definition changes — never
+just because the file it mounts changed content.
+
+**In a real multi-repo org** this is five separate CI/CD pipelines, one per app, each free to
+deploy on its own schedule; here it's one VM and one `docker compose build` that happens to
+only recreate the containers whose build context actually changed (Docker's layer cache gives
+an identical image digest to anything untouched, so compose leaves it running). Either way,
+what makes "redeploy only accounts" safe is the same thing: a fixed discovery URL that's
+never trusted stale, pointing at hashed asset URLs that are trusted forever.
 
 ---
 

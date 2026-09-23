@@ -1,8 +1,6 @@
 /**
  * The browser-reachable origin of each remote — the same resolution the Module
- * Federation config uses (`<NAME>_ORIGIN` env, else the local dev port). Used to
- * emit `<link rel="preconnect">` so the client-side federation manifest / entry
- * fetches don't pay a fresh TLS handshake mid-navigation.
+ * Federation config uses (`<NAME>_ORIGIN` env, else the local dev port).
  */
 const REMOTES: Record<string, number> = {
   accounts: 3001,
@@ -11,9 +9,15 @@ const REMOTES: Record<string, number> = {
   twofactor: 3004,
 };
 
+export function remoteList(): { name: string; origin: string }[] {
+  return Object.entries(REMOTES).map(([name, port]) => ({
+    name,
+    origin: process.env[`${name.toUpperCase()}_ORIGIN`] ?? `http://localhost:${port}`,
+  }));
+}
+
+/** Used to emit `<link rel="preconnect">` so the client-side federation
+ * manifest / entry fetches don't pay a fresh TLS handshake mid-navigation. */
 export function remoteOrigins(): string[] {
-  return Object.entries(REMOTES).map(
-    ([name, port]) =>
-      process.env[`${name.toUpperCase()}_ORIGIN`] ?? `http://localhost:${port}`,
-  );
+  return remoteList().map((r) => r.origin);
 }

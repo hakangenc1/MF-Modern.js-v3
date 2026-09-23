@@ -11,6 +11,26 @@
 (app) {
 	encode zstd gzip
 	reverse_proxy {args[0]}
+
+	# --- Module Federation cache strategy -----------------------------------
+	# Two file shapes, two policies. Rspack hashes every real asset's filename
+	# from its content (static/js/async/396.4495696090.js, .../*.css, fonts) —
+	# a new build means a new URL, so those are safe to cache forever.
+	# remoteEntry.js and mf-manifest.json are the two *fixed*-name files a shell
+	# (or another remote) uses to discover this app: MF's runtime fetches
+	# mf-manifest.json first, which points at the hashed chunk URLs, then loads
+	# remoteEntry.js as the federation container. If either of those two were
+	# ever served stale, redeploying this remote alone would silently not take
+	# effect until the cache expired — so they get "always revalidate", never
+	# "trust what you have".
+	@mf_entry path /static/remoteEntry.js /static/mf-manifest.json
+	header @mf_entry Cache-Control "no-cache"
+
+	@hashed_asset {
+		path /static/*
+		not path /static/remoteEntry.js /static/mf-manifest.json /static/mf-stats.json
+	}
+	header @hashed_asset Cache-Control "public, max-age=31536000, immutable"
 }
 
 shell.{$BASE_DOMAIN} {

@@ -589,6 +589,7 @@
     <a href="#performance">06 performance</a>
     <a href="#run">07 run</a>
     <a href="#deploy">08 deploy</a>
+    <a href="#versioning">08a versioning</a>
   </nav>
 </header>
 
@@ -619,13 +620,13 @@
       <p>
         Northwind is a retail-banking dashboard &mdash; accounts, transfers, payees, cards,
         two-factor security &mdash; built as a <strong>micro-frontend</strong>. One host app
-        (the <em>shell</em>) owns routing, the page chrome, auth, and data loading. Three
+        (the <em>shell</em>) owns routing, the page chrome, auth, and data loading. Four
         <em>remote</em> apps each own one banking domain and expose their screens and their
         data functions as federated modules. The shell pulls those in at runtime and renders
         everything into a single server-streamed response.
       </p>
       <p>
-        Each of the four apps is a <strong>standalone repository</strong> &mdash; its own
+        Each of the five apps is a <strong>standalone repository</strong> &mdash; its own
         <code>package.json</code> with real version numbers, its own <code>node_modules</code>,
         its own git history, its own build and deploy. There is no monorepo and no workspace.
         <code>shell/</code> could live on a different machine in a different org and nothing
@@ -674,7 +675,7 @@
     <div class="sec-head"><span class="num">02</span><h2>Architecture</h2></div>
     <div class="prose">
       <p>
-        The shell declares the four remotes by their manifest URL. At render time it imports
+        The shell declares all four remotes by their manifest URL. At render time it imports
         two kinds of thing from each: plain <strong>async data functions</strong> from
         <code>&lt;remote&gt;/data</code>, which it calls inside its route loaders, and
         <strong>router-free view components</strong>, which it renders with the resolved data.
@@ -687,7 +688,7 @@
     </div>
 
     <figure>
-      <svg viewBox="0 0 880 470" role="img" aria-label="The shell host at port 3000 imports data functions and view components from three remote apps — accounts on 3001, payments on 3002, security on 3003 — each exposing a data module plus several views. React and react-dom are shared singletons across all four.">
+      <svg viewBox="0 0 880 560" role="img" aria-label="The shell host at port 3000 imports data functions and view components from four remote apps — accounts on 3001, payments on 3002, security on 3003, twofactor on 3004 — each exposing a data module plus several views. React and react-dom are shared singletons across all five.">
         <defs>
           <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0 0 L10 5 L0 10 z" fill="currentColor" />
@@ -727,18 +728,25 @@
           <text class="svg-sub" x="490" y="260">./ActivityView &nbsp; ./QuickTransferCard</text>
         </g>
         <g>
-          <rect class="svg-box" x="470" y="322" width="370" height="118" rx="9" />
+          <rect class="svg-box" x="470" y="322" width="370" height="100" rx="9" />
           <text class="svg-label" x="490" y="347" font-weight="600">security</text>
           <text class="svg-sub" x="490" y="364">:3003 · remoteEntry.js</text>
           <text class="svg-sub" x="490" y="390">./data &nbsp; ./SecurityView &nbsp; ./TwoFactorView</text>
-          <text class="svg-sub" x="490" y="406">./DevicesView &nbsp; ./SessionsView</text>
-          <text class="svg-sub" x="490" y="422">./TwoFactorChallenge &nbsp; ./SecurityStatusCard</text>
+          <text class="svg-sub" x="490" y="406">./DevicesView &nbsp; ./SessionsView &nbsp; ./SecurityStatusCard</text>
+        </g>
+        <g>
+          <rect class="svg-box" x="470" y="440" width="370" height="90" rx="9" />
+          <text class="svg-label" x="490" y="465" font-weight="600">twofactor</text>
+          <text class="svg-sub" x="490" y="482">:3004 · remoteEntry.js</text>
+          <text class="svg-sub" x="490" y="508">./data &nbsp; ./TwoFactorChallenge</text>
+          <text class="svg-sub" x="490" y="524">./TwoFactorDialog &nbsp; ./TwoFactorGate</text>
         </g>
 
         <!-- wiring -->
-        <path class="svg-flow" d="M250 210 C 360 150, 380 100, 470 88" marker-end="url(#ah)" />
-        <path class="svg-flow" d="M250 234 L 470 235" marker-end="url(#ah)" />
-        <path class="svg-flow" d="M250 258 C 360 320, 380 360, 470 381" marker-end="url(#ah)" />
+        <path class="svg-flow" d="M250 208 C 360 150, 380 100, 470 88" marker-end="url(#ah)" />
+        <path class="svg-flow" d="M250 226 C 340 210, 380 236, 470 235" marker-end="url(#ah)" />
+        <path class="svg-flow" d="M250 250 C 360 300, 380 340, 470 372" marker-end="url(#ah)" />
+        <path class="svg-flow" d="M250 268 C 380 380, 420 440, 470 481" marker-end="url(#ah)" />
         <text class="svg-edge" x="300" y="120">import ./data (loaders)</text>
         <text class="svg-edge" x="300" y="352">import ./Views (render)</text>
 
@@ -747,14 +755,17 @@
         <text class="svg-label" x="145" y="385" text-anchor="middle">shared singletons</text>
         <text class="svg-sub" x="145" y="404" text-anchor="middle">react · react-dom</text>
         <path class="svg-flow--dash" d="M145 360 L 145 288" />
-        <path class="svg-flow--dash" d="M250 393 C 400 420, 430 300, 470 250" />
-        <path class="svg-flow--dash" d="M250 400 C 420 470, 450 430, 470 400" />
+        <path class="svg-flow--dash" d="M250 385 C 400 400, 430 280, 470 230" />
+        <path class="svg-flow--dash" d="M250 400 C 420 460, 450 400, 470 372" />
+        <path class="svg-flow--dash" d="M250 410 C 440 540, 460 500, 470 485" />
       </svg>
       <figcaption>
         The shell imports <code>./data</code> in its loaders and the <code>*View</code>
         components for rendering. <code>react</code> and <code>react-dom</code> are the only
         shared modules &mdash; sharing the router would drag each remote's runtime in and
-        render a second <code>&lt;Router&gt;</code>.
+        render a second <code>&lt;Router&gt;</code>. <code>twofactor</code> is federated
+        twice over: directly by the shell (<code>/login/verify</code>) and, remote-to-remote,
+        by <code>payments</code> and <code>security</code>.
       </figcaption>
     </figure>
 
@@ -976,7 +987,7 @@
     <div class="note">
       <span class="label">Version matrix &mdash; pinned in every app's pnpm.overrides</span>
       <p>
-        The Module Federation stack is fragile across minor versions. All four apps pin the
+        The Module Federation stack is fragile across minor versions. All five apps pin the
         identical set: <code>@rspack/core&nbsp;2.1.8</code>,
         <code>react-server-dom-rspack&nbsp;0.0.2</code>, every
         <code>@module-federation/*</code> at <code>2.8.2</code>
@@ -1231,22 +1242,22 @@
         from the top folder, which holds only orchestration scripts.
       </p>
     </div>
-    <pre><span class="c"># install all four apps</span>
+    <pre><span class="c"># install all five apps</span>
 npm run install:all
 
-<span class="c"># clears caches, boots the 3 remotes one by one, then the shell</span>
+<span class="c"># clears caches, boots the 4 remotes one by one, then the shell</span>
 npm run dev            <span class="c"># → http://localhost:3000</span>
 
-<span class="c"># any email + password, then 2FA code 123456</span></pre>
+<span class="c"># choose a persona, then 2FA code 123456</span></pre>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Command</th><th>Effect</th></tr></thead>
         <tbody>
           <tr><td class="mono">npm run install:all</td><td><code>pnpm install</code> in each app</td></tr>
-          <tr><td class="mono">npm run dev</td><td>serial remote boot, then shell &mdash; aborts if :3000aborts if :3000&ndash;:3003 are busyndash;:3004 are busy</td></tr>
+          <tr><td class="mono">npm run dev</td><td>serial remote boot, then shell &mdash; aborts if :3000&ndash;:3004 are busy</td></tr>
           <tr><td class="mono">npm run stop</td><td>kill a lost dev run whose terminal is gone</td></tr>
           <tr><td class="mono">npm run build</td><td><code>modern build</code> in each app</td></tr>
-          <tr><td class="mono">npm run start</td><td><code>modern serve</code> in each app (production)</td></tr>
+          <tr><td class="mono">npm run start</td><td>each app's <code>.output/index.js</code> (from <code>modern deploy</code>) &mdash; the same production Node server the container runs; <code>modern serve</code> alone does <em>not</em> serve the SSR remote entry</td></tr>
           <tr><td class="mono">npm run typecheck</td><td><code>tsc --noEmit</code> in each app</td></tr>
           <tr><td class="mono">npm run init:git</td><td>turn each app into its own git repository</td></tr>
         </tbody>
@@ -1266,17 +1277,17 @@ npm run dev            <span class="c"># → http://localhost:3000</span>
     <div class="sec-head"><span class="num">08</span><h2>Deploy</h2></div>
     <div class="prose">
       <p>
-        Four deployables, four pipelines. Each app is
-        <code>install&nbsp;&rarr;&nbsp;build&nbsp;&rarr;&nbsp;serve</code> &mdash; a long-lived
-        Node process (<code>modern serve</code>) behind a CDN. They find each other purely
-        through environment variables: the shell needs each remote's public origin to build
-        the manifest URLs; each remote needs its own public origin so its hashed chunks load
-        from the right place.
+        Five deployables, five pipelines. Each app is
+        <code>install&nbsp;&rarr;&nbsp;build&nbsp;&rarr;&nbsp;deploy</code> &mdash; a long-lived
+        Node process (<code>node .output/index</code>, from <code>modern deploy</code>) behind
+        a CDN or reverse proxy. They find each other purely through environment variables: the
+        shell needs each remote's public origin to build the manifest URLs; each remote needs
+        its own public origin so its hashed chunks load from the right place.
       </p>
     </div>
 
     <figure>
-      <svg viewBox="0 0 860 340" role="img" aria-label="Deployment topology: a CDN in front of four Node services — shell, accounts, payments, security. The browser hits the shell through the CDN; the shell's server fetches each remote's manifest server-to-server; static chunks for every app are served from the CDN edge.">
+      <svg viewBox="0 0 860 380" role="img" aria-label="Deployment topology: a CDN in front of five Node services — shell, accounts, payments, security, twofactor. The browser hits the shell through the CDN; the shell's server fetches each remote's manifest server-to-server (payments and security also fetch twofactor's); static chunks for every app are served from the CDN edge.">
         <defs>
           <marker id="d-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
             <path d="M0 0 L10 5 L0 10 z" fill="currentColor" />
@@ -1286,44 +1297,52 @@ npm run dev            <span class="c"># → http://localhost:3000</span>
           </marker>
         </defs>
 
-        <rect class="svg-box" x="40" y="140" width="120" height="56" rx="8" />
-        <text class="svg-label" x="100" y="166" text-anchor="middle">browser</text>
-        <text class="svg-sub" x="100" y="183" text-anchor="middle">bank.example</text>
+        <rect class="svg-box" x="40" y="160" width="120" height="56" rx="8" />
+        <text class="svg-label" x="100" y="186" text-anchor="middle">browser</text>
+        <text class="svg-sub" x="100" y="203" text-anchor="middle">bank.example</text>
 
-        <rect class="svg-box svg-box--accent" x="240" y="130" width="130" height="76" rx="8" />
-        <text class="svg-label" x="305" y="158" text-anchor="middle">CDN / edge</text>
-        <text class="svg-sub" x="305" y="176" text-anchor="middle">TLS · brotli</text>
-        <text class="svg-sub" x="305" y="192" text-anchor="middle">/static/* cached 1y</text>
+        <rect class="svg-box svg-box--accent" x="240" y="150" width="130" height="76" rx="8" />
+        <text class="svg-label" x="305" y="178" text-anchor="middle">CDN / edge</text>
+        <text class="svg-sub" x="305" y="196" text-anchor="middle">TLS · brotli</text>
+        <text class="svg-sub" x="305" y="212" text-anchor="middle">/static/* cached 1y</text>
 
         <rect class="svg-box" x="470" y="30" width="150" height="44" rx="7" />
         <text class="svg-label" x="545" y="52" text-anchor="middle" font-size="12">shell service</text>
         <text class="svg-sub" x="545" y="67" text-anchor="middle">node · :3000</text>
 
-        <rect class="svg-box" x="470" y="96" width="150" height="40" rx="7" />
-        <text class="svg-sub" x="545" y="120" text-anchor="middle">accounts · :3001</text>
-        <rect class="svg-box" x="470" y="150" width="150" height="40" rx="7" />
+        <rect class="svg-box" x="470" y="96" width="150" height="42" rx="7" />
+        <text class="svg-sub" x="545" y="121" text-anchor="middle">accounts · :3001</text>
+        <rect class="svg-box" x="470" y="149" width="150" height="42" rx="7" />
         <text class="svg-sub" x="545" y="174" text-anchor="middle">payments · :3002</text>
-        <rect class="svg-box" x="470" y="204" width="150" height="40" rx="7" />
-        <text class="svg-sub" x="545" y="228" text-anchor="middle">security · :3003</text>
+        <rect class="svg-box" x="470" y="202" width="150" height="42" rx="7" />
+        <text class="svg-sub" x="545" y="227" text-anchor="middle">security · :3003</text>
+        <rect class="svg-box" x="470" y="255" width="150" height="42" rx="7" />
+        <text class="svg-sub" x="545" y="280" text-anchor="middle">twofactor · :3004</text>
 
-        <path class="svg-flow--accent" d="M160 168 L 236 168" marker-end="url(#d-ah-a)" />
-        <path class="svg-flow" d="M370 150 C 420 120, 430 70, 468 60" marker-end="url(#d-ah)" />
-        <text class="svg-edge" x="376" y="104">SSR page</text>
+        <path class="svg-flow--accent" d="M160 188 L 236 188" marker-end="url(#d-ah-a)" />
+        <path class="svg-flow" d="M370 165 C 420 130, 430 75, 468 58" marker-end="url(#d-ah)" />
+        <text class="svg-edge" x="376" y="120">SSR page</text>
 
-        <path class="svg-flow--dash" d="M622 74 C 690 84, 690 108, 622 116" />
-        <path class="svg-flow--dash" d="M622 66 C 730 105, 720 160, 622 172" />
-        <path class="svg-flow--dash" d="M622 60 C 755 125, 730 210, 622 226" />
-        <text class="svg-edge" x="562" y="294">shell fetches each remote manifest</text>
+        <path class="svg-flow--dash" d="M622 74 C 690 90, 690 102, 622 117" />
+        <path class="svg-flow--dash" d="M622 66 C 700 115, 700 140, 622 170" />
+        <path class="svg-flow--dash" d="M622 60 C 722 155, 715 195, 622 223" />
+        <path class="svg-flow--dash" d="M622 54 C 748 185, 730 250, 622 276" />
+        <text class="svg-edge" x="562" y="314">shell fetches every remote's manifest</text>
 
-        <path class="svg-flow" d="M468 262 C 400 292, 348 252, 322 210" marker-end="url(#d-ah)" />
-        <text class="svg-edge" x="110" y="294">each app publishes hashed chunks to the edge</text>
+        <path class="svg-flow--dash" d="M545 149 C 545 300, 560 320, 620 297" />
+        <text class="svg-edge" x="290" y="334">payments &amp; security also fetch twofactor's manifest</text>
 
-        <text class="svg-sub" x="40" y="322" fill="var(--ink-faint)">solid = browser request path &nbsp;·&nbsp; dashed = server-to-server</text>
+        <path class="svg-flow" d="M468 285 C 400 320, 348 272, 322 226" marker-end="url(#d-ah)" />
+        <text class="svg-edge" x="110" y="314">each app publishes hashed chunks to the edge</text>
+
+        <text class="svg-sub" x="40" y="362" fill="var(--ink-faint)">solid = browser request path &nbsp;·&nbsp; dashed = server-to-server</text>
       </svg>
       <figcaption>
         The browser only ever talks to the shell (through the CDN). The shell's server
-        resolves the four remote manifests server-to-server at render time; each app's
-        hashed <code>/static/</code> chunks sit on the edge.
+        resolves all four remote manifests server-to-server at render time &mdash; payments
+        and security additionally resolve twofactor's. Every app's hashed
+        <code>/static/</code> chunks sit on the edge, cached for a year; the manifests
+        themselves are not (see &sect;08a).
       </figcaption>
     </figure>
 
@@ -1337,7 +1356,7 @@ npm run dev            <span class="c"># → http://localhost:3000</span>
           <tr><td class="mono">ACCOUNTS_ORIGIN</td><td>shell + accounts</td><td>public URL of the accounts service &mdash; manifest URL on the host, <code>assetPrefix</code> on the remote</td></tr>
           <tr><td class="mono">PAYMENTS_ORIGIN</td><td>shell + payments</td><td>&hellip; same for payments</td></tr>
           <tr><td class="mono">SECURITY_ORIGIN</td><td>shell + security</td><td>&hellip; same for security</td></tr>
-          <tr><td class="mono">TWOFACTOR_ORIGIN</td><td>shell + payments + twofactor</td><td>&hellip; consumed by two hosts (login &amp; transfer)</td></tr>
+          <tr><td class="mono">TWOFACTOR_ORIGIN</td><td>shell + payments + security + twofactor</td><td>&hellip; consumed by three hosts (login, transfer, 2FA setup page)</td></tr>
           <tr><td class="mono">SESSION_SECRET</td><td>shell, accounts, security</td><td>HMAC key for the session cookie &mdash; must match</td></tr>
           <tr><td class="mono">MODERN_MF_AUTO_CORS</td><td>all</td><td><code>true</code> &mdash; remotes send CORS headers for browser-side federation</td></tr>
           <tr><td class="mono">MODERNJS_DEPLOY</td><td>all</td><td><code>node</code> &mdash; overrides Render's injected <code>render</code></td></tr>
@@ -1349,12 +1368,14 @@ npm run dev            <span class="c"># → http://localhost:3000</span>
       <div>
         <h3>Container (recommended)</h3>
         <p class="kv">
-          One image per app: <b>node:20-alpine</b>, <code>corepack enable</code>,
-          <code>pnpm install --frozen-lockfile</code>, <code>pnpm build</code>,
-          <code>CMD pnpm serve</code>. Deploy to <b>Cloud Run</b>, <b>Fly.io</b>,
-          <b>Render</b>, <b>Railway</b>, <b>AWS App Runner / ECS</b>, or
-          <b>Azure Container Apps</b>. Put <b>Cloudflare</b> or the platform CDN in front
-          for TLS, compression, and <code>/static/</code> caching.
+          One image per app: <b>node:22-bookworm-slim</b>, <code>corepack enable</code>,
+          <code>pnpm install --frozen-lockfile</code>, <code>pnpm run deploy</code>,
+          <code>CMD node .output/index</code>. This repo's own reference deploy
+          (<code>deploy/</code>) runs all five on one <b>Oracle Cloud</b> VM behind
+          <b>Docker Compose + Caddy</b> for TLS &mdash; see &sect;08a for the cache policy
+          Caddy applies. Any container platform works the same way: <b>Cloud Run</b>,
+          <b>Fly.io</b>, <b>Render</b>, <b>Railway</b>, <b>AWS App Runner / ECS</b>,
+          <b>Azure Container Apps</b>.
         </p>
       </div>
       <div>
@@ -1377,20 +1398,157 @@ npm run dev            <span class="c"># → http://localhost:3000</span>
       </p>
     </div>
 
-    <div class="note note--warn">
-      <span class="label">Known limitation &mdash; production SSR federation</span>
+    <div class="note">
+      <span class="label">Production SSR federation needs a vendored patch</span>
       <p>
-        <code>modern serve</code> does not serve the SSR remote-entry at
-        <code>/bundles/static/remoteEntry.js</code>, so on a plain production deploy the
-        federated widgets fall back to <strong>client rendering</strong> &mdash; they still
-        work, they just aren't in the streamed HTML for those regions. Full SSR federation
-        works in <code>npm run dev</code>.
+        <code>@module-federation/modern-js-v3</code> 2.8.2's own SSR static middleware
+        (serves each remote's <code>dist/bundles/static/*</code> at
+        <code>&lt;origin&gt;/bundles/*</code> &mdash; what makes SSR federation possible in
+        prod) ships two bugs: <code>path.join("/", "/bundles")</code> breaks on Windows, and
+        <code>Content-Length</code> is set from the JS string's <code>.length</code> instead
+        of its UTF-8 byte length &mdash; truncating any chunk with a non-ASCII byte, on
+        <strong>any</strong> OS. Both fixed by <code>patches/@module-federation__modern-js-v3@2.8.2.patch</code>,
+        a vendored <code>pnpm patch</code> applied via <code>pnpm.patchedDependencies</code>
+        in every app's <code>package.json</code>. Without it, federated regions silently fall
+        back to client rendering in production even though <code>npm run dev</code> looks
+        fine. Also required: <code>MODERN_MF_AUTO_CORS=true</code> on every remote (see the
+        Environment table above).
+      </p>
+    </div>
+  </section>
+
+  <!-- 08a -->
+  <section id="versioning">
+    <div class="sec-head"><span class="num">08a</span><h2>Versioning &amp; cache safety</h2></div>
+    <div class="prose">
+      <p>
+        Five separately-deployable apps means five separate release cadences &mdash;
+        accounts ships a fix on Tuesday, nobody else redeploys. Two things have to hold for
+        that to actually work without hand-coordinating or hunting a stale-cache bug
+        afterward.
+      </p>
+      <h3>Each remote's own version, for free</h3>
+      <p>
+        Module Federation reads it straight from that app's own <code>package.json</code>
+        &mdash; no wiring, no extra step:
+      </p>
+      <pre><span class="c">&#47;&#47; GET https:&#47;&#47;accounts.example.com&#47;static&#47;mf-manifest.json</span>
+{ "metaData": { "buildInfo": { "buildVersion": "1.4.0" } } }</pre>
+      <p>
+        Bump <code>accounts/package.json</code>'s <code>"version"</code>, rebuild and
+        redeploy <em>only</em> accounts, and its manifest now says <code>1.4.0</code> while
+        shell/payments/security/twofactor haven't rebuilt and still say whatever they were.
+        The shell never declares or tracks a remote's version anywhere &mdash; it asks each
+        remote's manifest at request time and gets today's truth.
+        <code>scripts/gen-package-json.mjs</code> is careful never to reset this: it only
+        fills in a version the first time an app's <code>package.json</code> doesn't exist
+        yet, never on a regen.
       </p>
       <p>
-        Fix path: a small static middleware serving each remote's
-        <code>dist/bundles/static/</code>, or the <code>staticServePlugin</code> from
-        <code>@module-federation/modern-js-v3</code> once its build-time init issue is
-        resolved for this Modern.js version.
+        Don't confuse this with the <b>version matrix</b> above (&sect;04) &mdash; that's
+        the shared <em>toolchain</em> (Rspack, <code>@module-federation/*</code>, React),
+        which every app deliberately pins <strong>identical</strong> because Module
+        Federation is fragile across minor versions there. A remote's own
+        <code>package.json</code> version is the opposite: deliberately
+        <strong>independent</strong>, one per app. The shell's &ldquo;How this page was
+        rendered&rdquo; popover (top-right, any page) shows every remote's live version
+        &mdash; a small server-side fetch of each <code>mf-manifest.json</code>, the same
+        file MF's own runtime already reads to resolve the remote.
+      </p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 820 190" role="img" aria-label="Discovering a remote is two requests: GET mf-manifest.json, a fixed-name file that lists today's hashed chunk URLs, then GET remoteEntry.js, also fixed-name, then the actual hashed chunk. The fixed-name files must never be served stale; the hashed one is safe to cache forever.">
+        <defs>
+          <marker id="v-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="currentColor" />
+          </marker>
+        </defs>
+
+        <rect class="svg-box" x="20" y="66" width="130" height="56" rx="8" />
+        <text class="svg-label" x="85" y="90" text-anchor="middle">shell</text>
+        <text class="svg-sub" x="85" y="107" text-anchor="middle">(or a peer remote)</text>
+
+        <rect class="svg-box svg-box--accent" x="255" y="20" width="230" height="50" rx="7" />
+        <text class="svg-label" x="370" y="40" text-anchor="middle" font-size="12">GET /static/mf-manifest.json</text>
+        <text class="svg-sub" x="370" y="57" text-anchor="middle">fixed name &middot; Cache-Control: no-cache</text>
+
+        <rect class="svg-box svg-box--accent" x="255" y="90" width="230" height="50" rx="7" />
+        <text class="svg-label" x="370" y="110" text-anchor="middle" font-size="12">GET /static/remoteEntry.js</text>
+        <text class="svg-sub" x="370" y="127" text-anchor="middle">fixed name &middot; Cache-Control: no-cache</text>
+
+        <rect class="svg-box" x="590" y="55" width="210" height="50" rx="7" />
+        <text class="svg-label" x="695" y="75" text-anchor="middle" font-size="11.5">GET /static/js/async/396.4495&hellip;js</text>
+        <text class="svg-sub" x="695" y="92" text-anchor="middle">hashed name &middot; immutable · max-age=1y</text>
+
+        <path class="svg-flow" d="M150 88 C 190 70, 210 55, 253 45" marker-end="url(#v-ah)" />
+        <text class="svg-edge" x="152" y="55">&#9312; resolve</text>
+        <path class="svg-flow" d="M370 70 C 370 78, 370 82, 370 88" marker-end="url(#v-ah)" />
+        <path class="svg-flow" d="M485 108 C 530 100, 555 92, 588 82" marker-end="url(#v-ah)" />
+        <text class="svg-edge" x="500" y="145">&#9313; load the container, which then requests</text>
+        <text class="svg-edge" x="500" y="162">whatever hashed chunks the current route needs</text>
+
+      </svg>
+      <figcaption>
+        Two fixed-name files (<code>mf-manifest.json</code>, <code>remoteEntry.js</code>)
+        must always be revalidated, because they're how a stale reference could ever happen;
+        every hashed URL they point at is safe to cache forever, because its filename
+        changes the moment its content does.
+      </figcaption>
+    </figure>
+
+    <div class="prose">
+      <h3>The cache trap this creates</h3>
+      <p>
+        If either fixed-name file is ever served from a stale cache, redeploying that one
+        remote silently doesn't take effect until the cache expires &mdash; the shell (or a
+        tab left open) keeps asking a URL that a proxy or the browser's own HTTP cache
+        insists it already has the answer to; Network tab shows
+        <code>(memory cache)</code> / <code>(disk cache)</code> instead of a real request
+        going out. <code>deploy/Caddyfile</code> splits the two policies by path, identically
+        on all five hosts:
+      </p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Path</th><th>Cache-Control</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="mono">/static/remoteEntry.js<br />/static/mf-manifest.json</td>
+            <td class="mono">no-cache</td>
+            <td>Fixed name &mdash; always ask the origin before trusting a cached copy. A few KB, so revalidating every time is cheap.</td>
+          </tr>
+          <tr>
+            <td class="mono">everything else under /static/*</td>
+            <td class="mono">public, max-age=31536000, immutable</td>
+            <td>Hashed name &mdash; a new build is a new URL, so the <em>old</em> URL's response never changes underneath a cached copy. Safe for a year.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <p>
+        Before this split, neither file shape set <code>Cache-Control</code> at all &mdash;
+        undefined, implementation-dependent caching instead of a deliberate policy.
+        <code>deploy/up.sh</code> reloads Caddy (<code>caddy reload --config</code>) on
+        every deploy, since the Caddyfile is bind-mounted and <code>docker compose up</code>
+        only recreates a container when its image or service definition changes &mdash;
+        never just because the file it mounts changed content.
+      </p>
+    </div>
+
+    <div class="note">
+      <span class="label">One VM here, N pipelines in a real org</span>
+      <p>
+        In a real multi-repo org this is five separate CI/CD pipelines, one per app, each
+        free to deploy on its own schedule; here it's one VM and one
+        <code>docker compose build</code> that happens to only recreate the containers whose
+        build context actually changed (Docker's layer cache gives an identical image digest
+        to anything untouched, so compose leaves it running). Either way, what makes
+        &ldquo;redeploy only accounts&rdquo; safe is the same thing: a fixed discovery URL
+        that's never trusted stale, pointing at hashed asset URLs that are trusted forever.
       </p>
     </div>
   </section>

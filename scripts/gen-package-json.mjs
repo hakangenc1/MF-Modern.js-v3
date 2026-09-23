@@ -1,5 +1,5 @@
 // One-off: writes a standalone package.json into each app.
-import { writeFileSync, copyFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, copyFileSync, mkdirSync, existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -91,9 +91,20 @@ const sortObj = (o) =>
   Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b)));
 
 for (const app of ["shell", "accounts", "payments", "security", "twofactor"]) {
+  // Each app owns its own release cadence — accounts can ship 1.4.0 while
+  // shell is still on 1.0.0. Module Federation reads this straight into
+  // mf-manifest.json (metaData.buildInfo.buildVersion) with no extra config,
+  // which is how a shell (or another remote) can tell which build of a
+  // remote it's actually talking to. So this generator must never reset an
+  // app's version back to a shared default — only fill it in the first time
+  // the app's package.json doesn't exist yet.
+  const pkgPath = join(root, app, "package.json");
+  const existingVersion = existsSync(pkgPath)
+    ? JSON.parse(readFileSync(pkgPath, "utf8")).version
+    : undefined;
   const pkg = {
     name: `northwind-${app}`,
-    version: "1.0.0",
+    version: existingVersion ?? "1.0.0",
     private: true,
     // Pin the exact pnpm so corepack never resolves `pnpm@latest`.
     packageManager: "pnpm@9.15.4",
@@ -118,7 +129,7 @@ for (const app of ["shell", "accounts", "payments", "security", "twofactor"]) {
       "ios_saf >= 15.4",
     ],
   };
-  writeFileSync(join(root, app, "package.json"), JSON.stringify(pkg, null, 2) + "\n");
+  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
   mkdirSync(join(root, app, "patches"), { recursive: true });
   for (const file of Object.values(PATCHES)) {
     copyFileSync(join(root, "patches", file), join(root, app, "patches", file));
